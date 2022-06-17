@@ -151,7 +151,7 @@ class CCallback(object):
 		self.idindex = 0
 	
 	def Add(self, check, onchange, id = None, defaultvalue = 1, mode = 0):
-	
+
 		"""
 		Add a callback to the list for this Callback object to take care of.
 		
@@ -172,27 +172,27 @@ class CCallback(object):
 		
 		This function also returns the original callback ID, so you can get it later if you need to.
 		"""
-	
+
 		if defaultvalue == 0:
 			callback = [check, onchange, mode, None]
 		else:
 			callback = [check, onchange, mode, check()]
-			
-		if id == None:				# If you don't specify an ID, then it will return an internal ID counter
+
+		if id is None:				# If you don't specify an ID, then it will return an internal ID counter
 			id = self.idindex
 			self.idindex += 1
-			
+
 		self.calls[id] = callback	# A list of all calls for this callback object - the checking function, the function to return if the callback is true, the mode, as well as the previous value (used by the Change mode, which is default)
-		
+
 		return id					# Returns the ID number if you want to keep track of it and access the Callback object's callbacks through object.calls[id]
 
 	def Remove(self, id = None):
-	
+
 		"""
 		Removes the callback with the specified ID from the list of callback functions for this object.
 		"""
 
-		if id == None:
+		if id is None:
 			self.calls.popitem()
 		else:
 			del self.calls[id]
@@ -245,22 +245,19 @@ class CBoxBounds(object):
 	"""
 
 	def __init__(self, topleft, bottomright, originpoint = [0, 0, 0], obj = None):
-	
+
 		self._box = []
 		self.bounds = []
 		self.collision = []		# If this bounds object is involved in a collision, and if so, then with which object
 		self.active = 1			# If this bounds object should be considered for collisions
 		self.originpoint = originpoint
-		
+
 		self.SetBounds(topleft, bottomright)
-		
+
 		#self.owner = pass
 		#op = self.originpoint
 		#self._box = [ [topleft[0], topleft[1], topleft[2]], [bottomright[0], bottomright[1], bottomright[2]] ]	# Un-transformed box
-		if obj == None:
-			self.owner = logic.getCurrentController().owner
-		else:
-			self.owner = obj
+		self.owner = logic.getCurrentController().owner if obj is None else obj
 	
 	def SetBounds(self, topleft, bottomright):
 		#op = self.originpoint
@@ -303,33 +300,28 @@ class CBoxBounds(object):
 		return None
 		
 	def PointBoxInt(self, box, point):
-	
-		if box.active:
-	
-			if point[0] > box.bounds[0][0] and point[1] > box.bounds[0][1] and point[2] > box.bounds[0][2] \
-			and point[0] < box.bounds[1][0] and point[1] < box.bounds[1][1] and point[2] < box.bounds[1][2]:
-				
-				box.collision.append(['point', point])
-				return point
+
+		if (box.active and point[0] > box.bounds[0][0] and point[1] > box.bounds[0][1]
+		    and point[2] > box.bounds[0][2] and point[0] < box.bounds[1][0]
+		    and point[1] < box.bounds[1][1] and point[2] < box.bounds[1][2]):
+			box.collision.append(['point', point])
+			return point
 
 		return None
 	
 	def DebugDraw(self):
 			
 		for p in range(len(self.points)):
-		
+
 			if p < len(self.points) - 1:
-			
+
 				pn = p + 1
 
 				if self.active:
-					if self.collision != []:
-						color = [1, 0, 0]
-					else:
-						color = [1, 1, 1]
+					color = [1, 0, 0] if self.collision != [] else [1, 1, 1]
 				else:
 					color = [1, 1, 0]
-					
+
 				render.drawLine(self.points[p], self.points[pn], color)
 				
 class CPersistence(object):
@@ -344,7 +336,7 @@ class CPersistence(object):
 		self.perlist = {}
 		
 	def Save(self, savelist, newlist = 1):
-	
+
 		"""
 		Saves the object / value pairings in savelist. Savelist should look like this:
 		
@@ -365,23 +357,23 @@ class CPersistence(object):
 			['Switch', 'on', 1, 0] - This last value is 0, indicating it's a custom variable.
 		]
 		"""
-	
+
 		sce = logic.getCurrentScene()
-		
-		if not sce.name in self.perlist or newlist:	# Initializes the scene list if either the list doesn't exist for the current
+
+		if sce.name not in self.perlist or newlist:	# Initializes the scene list if either the list doesn't exist for the current
 			self.perlist[sce.name] = []	# scene, or if you want to wipe the persistence list. It's possible that you won't want to override the
 										# previous list, like if you used SaveAll, and then want to add in specific properties.
 		for o in savelist:
-		
+
 			if o[1] in o[0]:
 				self.perlist[sce.name].append([o[0].name, o[1], o[0][o[1]], 1])
 			else:
 				self.perlist[sce.name].append([o[0].name, o[1], getattr(o[0], o[1], None), 0])
-				
+
 		return (self.perlist[sce.name])	# Returns the list for good measure
 			
 	def SaveAll(self, objlist = None, newlist = 1):
-	
+
 		"""
 		Saves in the persistence list all -custom- variables for each object.
 		Generally not necessary, nor is it stable if you have references to objects that may not exist anymore.
@@ -390,49 +382,49 @@ class CPersistence(object):
 		objlist = an optional list that lists which objects to save data from the current scene; 
 		if not specified, the whole scene object list is used.
 		"""
-	
+
 		sce = logic.getCurrentScene()
-	
-		if not sce.name in self.perlist or newlist:	# Initialize the list of object properties
+
+		if sce.name not in self.perlist or newlist:	# Initialize the list of object properties
 			self.perlist[sce.name] = []
-		
-		if objlist == None:
+
+		if objlist is None:
 			objlist = sce.objects
-		
+
 		for ob in objlist:
-			
+
 			if ob.invalid:
 				self.perlist[sce.name].append({ob.name, None, None})					# Tells that an object is dead, as the reference is invalid
 			else:
 				self.perlist[sce.name].append({ob.name, 'attrDict', ob.attrDict})	# Tells that there's an attribute dictionary up ahead
-	
+
 		return self.perlist[sce.name]
 		
 	def Load(loadlist = None):
-	
+
 		sce = logic.getCurrentScene()
-		
-		if loadlist == None:
+
+		if loadlist is None:
 			loadlist = self.perlist[sce.name]
-		
+
 		for l in loadlist:
-		
+
 			print (l)
-			
+
 			obname = l[0]	# Object name
 			var = l[1]		# Variable name
 			value = l[2]	# Variable value
 			built = l[3]	# Built-in variable?
-			
+
 			obj = sce.objects[obname]
-			
+
 			if built == 1:
 				setattr(obj, var, value)
 			else:
 				obj[var] = value
-				
+
 		print ('list loaded!')
-				
+
 		return loadlist
 	
 class CNodePath(object):
@@ -488,12 +480,12 @@ class CNodePath(object):
 			return (self.path[(self.currentnode + n) - len(self.path)])
 			
 	def GetPrevNode(self, n = 1):
-	
+
 		"""
 		Return the previous node in path.
 		n = the number to check
 		"""
-		
+
 		if self.currentnode - n >= 0:
 			return (self.path[self.currentnode - n])
 		else:
@@ -517,7 +509,7 @@ class CNodePath(object):
 			self.currentnode = len(self.path) - 1
 			
 	def MovePath(self, obj, speed, turntime = 5.0, linear = 0):
-	
+
 		"""
 		Moves the specified object on its path.
 		
@@ -529,26 +521,21 @@ class CNodePath(object):
 		I believe the movement speed is in Blender Units per second, while in Static mode, the movement speed is in BU per game frame.
 		
 		"""
-	
+
 		self.pathcompleted = 0
-	
-		if self.oncomplete == 1:
-			if (self.currentnode >= len(self.path) - 1 and self.direction == 1) or (self.currentnode <= 0 and self.direction == -1):
-				self.direction = Reverse(self.direction, -1, 1)
-				self.pathcompleted = 1
-	
-		if self.direction > 0:
-			next = self.GetNextNode()
-		else:
-			next = self.GetPrevNode()
-		
-		
-		
+
+		if self.oncomplete == 1 and (
+		    (self.currentnode >= len(self.path) - 1 and self.direction == 1) or
+		    (self.currentnode <= 0 and self.direction == -1)):
+			self.direction = Reverse(self.direction, -1, 1)
+			self.pathcompleted = 1
+
+		next = self.GetNextNode() if self.direction > 0 else self.GetPrevNode()
 		if PosClose(obj.worldPosition, next[0]):
 			self.SetNode(next[1])
-	
+
 		TrackTo(next[0], obj, time = turntime, dimensions = 'xy')
-		
+
 		if linear:
 			obj.setLinearVelocity([0.0, speed, obj.getLinearVelocity()[2]], 1)
 		else:
@@ -581,33 +568,33 @@ class CNodePath(object):
 			of 'nodeindex', then the nodes will be sorted in the list according to their 'nodeindex' value.
 			
 			The string sorting doesn't work with list values as path points."""
-		
+
 		if isinstance(sortvar, str):
 
 			p = sorted(pathpoints, key = lambda object : object[sortvar])
-		
+
 		elif sortvar == 1:
-		
+
 			if isinstance(pathpoints[0], types.KX_GameObject):
 				p = sorted(pathpoints, key = lambda object : object.name)
 			else:
 				p = sorted(pathpoints)
-		
+
 		else:
-			
+
 			p = pathpoints
-		
+
 		path = []
-		
+
 		for x in range(len(p)):
-			
+
 			if isinstance(p[x], types.KX_GameObject):
 				path.insert(x, [p[x].worldPosition, x, p[x]])
 			else:							# It's a list, so just go with that
 				path.insert(x, [p[x], x])
-		
+
 		self.path = path
-		
+
 		return (path)	# Just in case you want to see the path yourself
 	
 class CNodeMap(object):
@@ -643,7 +630,7 @@ class CNodeMap(object):
 			# from a position, basically
 				
 		def Update(self, solidvar = '', raytest = 1, distrange = None):
-		
+
 			"""
 			Updates all nodes in the nodemap.
 			
@@ -652,51 +639,30 @@ class CNodeMap(object):
 			"""
 				
 			self.links = []
-				
+
 			m = self.map
 			obj = logic.getCurrentController().owner
-				
+
 			for node in m.nodes:
-			
-				if not node == self:
+
+				if node != self:
 					
 					if not raytest:
 						diff = ListCom(ListAbs(ListSub(self.pos, node.pos)))
-						if distrange == None or (diff >= distrange[0] and diff <= distrange[1]):
+						if distrange is None or (diff >= distrange[0] and diff <= distrange[1]):
 							if self not in node.links:
 								node.links.append(self)
 							if node not in self.links:
 								self.links.append(node)
 					else:
-					
-						test = obj.rayCast(node.pos, self.pos, 0, solidvar, 1, 1)
-						
-						#if g != [0, 0, 0]:		# Add a girth value for testing around the object
-						
-						#	if test[0] == None:
-						#		test = obj.rayCast(ListSub(node.pos, g), ListSub(self.pos, g), 0, solidvar, 1, 1)
-						#	if test[0] == None:
-						#		test = obj.rayCast(ListAdd(node.pos, g), ListAdd(self.pos, g), 0, solidvar, 1, 1)
-						
-						#angok = 1
-						
-						# if anglimit != [0, 0, 0]:
-						
-							# md = math.degrees(mathutils.Vector(node.pos).angle(mathutils.Vector(self.pos)))
-							
-							# inc = anglimit[2]
-							
-							# diff = math.floor(md / inc) * inc
-							# diff = md - diff
-							
-							# if diff < anglimit[0] or md > anglimit[1]:
-								# angok = 0
 
-						if test[0] == None:# and angok:
-						
+						test = obj.rayCast(node.pos, self.pos, 0, solidvar, 1, 1)
+
+						if test[0] is None:# and angok:
+
 							diff = ListCom(ListAbs(ListSub(self.pos, node.pos)))
-							
-							if distrange == None or (diff >= distrange[0] and diff <= distrange[1]):
+
+							if distrange is None or (diff >= distrange[0] and diff <= distrange[1]):
 								if self not in node.links:
 									node.links.append(self)
 								if node not in self.links:
@@ -706,7 +672,7 @@ class CNodeMap(object):
 			return self.links
 					
 	def __init__(self):
-	
+
 		self.nodes = []		# Nodes in your map
 		self.nodenum = 0								# Number of nodes in the map; useless, kinda, but useful for some things.
 		self.debugcolor = RandomList([0.2, 0.2, 0.2, 1.0], [0.5, 0.5, 0.5, 1.0])[:3]				# Unique debug color for each node map
@@ -723,7 +689,7 @@ class CNodeMap(object):
 		[node.Update(solidvar, raytest, distrange) for node in self.nodes]		
 						
 	def Calculate(self, start, end, solidvar = '', startray = 1, endray = 1, instant = 1):
-	
+
 		"""
 		Construct a path from one point (start) to another (end).
 		
@@ -737,96 +703,89 @@ class CNodeMap(object):
 		indicating whether the path was successfully found or not. For whatever reason, it won't always
 		find the path, though this might be more to do with my in-game setup than anything. :S
 		"""
-	
+
 		map = self.nodes	# You can specify another map of nodes, if you want.
-	
+
 		#endnode = self.GetClosestNode(end, rayvar = solidvar)
-		
+
 		startnode = self.GetClosestNode(start, raytest = startray, rayvar = solidvar)
 		endnode = self.GetClosestNode(end, raytest = endray, rayvar = solidvar)
-			
-		if endnode == None or startnode == None:
-			
+
+		if endnode is None or startnode is None:
 			return ([[], 0])
-			
-		else:
-			
-			startnode = startnode[0]
-			endnode = endnode[0]
-		
+
+		startnode = startnode[0]
+		endnode = endnode[0]
+
 		pathfound = 0
-		
+
 		checkpossibles = [startnode]
 		checked = []
-		
+
 		path = []	
 
 		pathpass = 0
 
 		while (pathfound == 0):
-		
+
 			#pathpass += 1
 			#if pathpass > 100:	# Failsafe
 			#	pathfound = None
-				
+
 			chklist = checkpossibles[:]
-				
+
 			if len(chklist) <= 0:		# Check list is empty
 				break
-				
+
 			for node in chklist:
-			
+
 				checkpossibles.remove(node)
-				
-				if not node in checked:
-				
+
+				if node not in checked:
+
 					checked.append(node)
 
 					if node == endnode and instant == 1:		# A path has been found! If instant is on, then take that path to the bank.
-						
+
 						pathfound = 1
-						
+
 						pathparent = endnode
-						
+
 						while pathparent != None:
 
 							path.append(pathparent)
 							pathparent = pathparent.parent
-						
+
 						#pathparent = finalnode		
-						
+
 						#while pathparent != None:
-						
+
 						#	print (pathparent.node.pos)
-							
+
 						#	path.append(pathparent)
 						#	pathparent = pathparent.parent
 
 						path = [p.pos for p in path]
-						
+
 						path.reverse()
 
 						break
-					
+
 					for link in node.links:
 						
-						if not link in checked:
+						if link not in checked:
 
-							if link.parent == None:
+							if link.parent is None:
 								link.parent = node
 							checkpossibles.append(link)	# Register it as being checked in the next loop
-	
+
 		for node in self.nodes:
 			node.parent = None	# Clear parent relationship after the path has been figured out
 
-		if pathfound == 1:
-			#self.path = path
-			return [path, 1]
-		else:
-			return [path, 0]			# The path was invalid
+		return [path, 1] if pathfound == 1 else [path, 0]
 		
 	def Navigate(self, path, ind, movespd = 0.1, linear = 1, zaxis = 1, obj = None, freq = None):
-	
+
 		"""
 		Moves the object obj on the path indictated from node to node. When a node has been reached, it moves
 		on to the next node in the path, if there is one.	
@@ -838,37 +797,34 @@ class CNodeMap(object):
 		
 		Returns a list consisting of the path index and if the path has been completed.
 		"""
-	
+
 		cont = logic.getCurrentController()
-	
-		if obj == None:
+
+		if obj is None:
 			obj = cont.owner
-		
+
 		freq = cont.sensors[0].frequency + 1
-		
+
 		ret = [ind, 0]
-		
+
 		if ind >= 0 and ind <= len(path) - 1:
-		
+
 			if PosClose(obj.worldPosition, path[ind], 1, movespd * freq) == 1:
-			
+
 				if ind + 1 >= len(path):	# Path end
-				
+
 					ret[1] = 1
-				
+
 				else:
-				
+
 					ret[0] = ind + 1
 			else:
-			
+
 				p = path[ind]
 				op = obj.worldPosition
-			
-				if not zaxis:
-					moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0])
-				else:
-					moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
-				
+
+				moveto = (mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
+				          if zaxis else mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0]))
 				if linear:
 					moveto.magnitude = movespd * logic.getLogicTicRate()
 					moveto.z += obj.getLinearVelocity()[2]
@@ -876,11 +832,11 @@ class CNodeMap(object):
 				else:
 					moveto.magnitude = movespd * freq
 					obj.applyMovement(list(moveto))
-		
+
 		return ret
 		
 	def NavigateMS(self, path, ind, movespd = 0.1, zaxis = 1, obj = None, freq = None):
-	
+
 		"""
 		Returns the movement speed that the object obj should move on the path indictated from node to node. 
 		When a node has been reached, it moves
@@ -893,50 +849,47 @@ class CNodeMap(object):
 		
 		Returns a list consisting of the path index and if the path has been completed.
 		"""
-	
+
 		cont = logic.getCurrentController()
-	
-		if obj == None:
+
+		if obj is None:
 			obj = cont.owner
-		
+
 		freq = cont.sensors[0].frequency + 1
-		
+
 		ret = [ind, 0, None]
-		
+
 		moveto = mathutils.Vector()
-		
+
 		if ind >= 0 and ind <= len(path) - 1:
 
 			if PosClose(obj.worldPosition, path[ind], 1, movespd * freq) == 1:
-			
+
 				if ind + 1 >= len(path):	# Path end
-				
+
 					ret[1] = 1
-				
+
 				else:
-				
+
 					ret[0] = ind + 1
 			else:
-			
+
 				p = path[ind]
 				op = obj.worldPosition
-			
-				if not zaxis:
-					moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0])
-				else:
-					moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
-				
+
+				moveto = (mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
+				          if zaxis else mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0]))
 				moveto.magnitude = movespd * logic.getLogicTicRate()
 				moveto.z += obj.getLinearVelocity()[2]
-					
+
 		ret[2] = moveto
-					
+
 		return ret
 				
 	# ~~ Node handling ~~
 		
 	def AddNode(self, pos, update = 0, raytest = 1, rayvar = 'nodesolid', ownerobj = None):
-	
+
 		"""
 		Create a node at a position and add it to the node map. Also, find neighbors
 		for the indicated node.
@@ -950,65 +903,63 @@ class CNodeMap(object):
 		ownerobj = owner of the node; used just to tie the position of the node back to a object (so, for example,
 		you can check if this is a 'patrol' node or a 'food' node, etc).
 		"""
-	
+
 		n = self.CNode( self, list(pos), ownerobj)
-		
+
 		obj = logic.getCurrentController().owner
-		
+
 		self.nodes.append(n)
-		
+
 		self.nodenum += 1
-		
-		if update == 1:		# Find the neighbors of this node
+
+		if update == 1:	# Find the neighbors of this node
 			
 			for fromnode in self.nodes:
-			
+
 				if fromnode != n:
-				
+
 					hit = obj.rayCast(fromnode.pos, n.pos, 0, rayvar, 1, 1)[0]
-					
-					if not raytest or (raytest and hit == None):
-					
+
+					if not raytest or hit is None:
+
 						if n not in fromnode.links:
 							fromnode.links.append(n)
 						if fromnode not in n.links:
 							n.links.append(fromnode)
 
 	def DeleteNode(self, node):
-	
+
 		"""
 		Delete the node from the NodeMap, taking care of links to neighbors as well. Nodes can be gotten through the
 		'GetNode' function
 		"""
 		
 		self.nodenum -= 1
-		
+
 		for neighbor in node.links:			# Remove links to this node from other objects
-			
+
 			if node in neighbor.links:
-			
+
 				neighbor.links.remove(node)
-			
+
 		self.nodes.remove(node)				# Remove the node
-	
- 
+
+
 		"""
 		Returns the node at the position designated by pos. If there is no pos variable, it will return a random node.
 		If there is no node at a specified position, the function will return None.
 		"""
-	
-		if pos != None:
-			ret = [n for n in self.nodes if n.pos == pos]
-			if len(ret) > 0:
-				return ret[0]
-		else:
+
+		if pos is None:
 			if len(self.nodes) > 0:
 				return (self.nodes[math.floor(logic.getRandomFloat() * len(self.nodes))])
-		
+
+		elif ret := [n for n in self.nodes if n.pos == pos]:
+			return ret[0]
 		return None	# Node not found
 		
 	def GetClosestNode(self, pos = None, raytest = 1, rayvar = ''):
-	
+
 		"""
 		Get the closest node to the specified position. 
 		
@@ -1017,35 +968,31 @@ class CNodeMap(object):
 		"""
 		
 		obj = logic.getCurrentController().owner
-		
-		if pos == None:
+
+		if pos is None:
 			pos = obj.worldPosition
-		
+
 		nodes = []
 
 		[nodes.append([n, ListCom(ListAbs(ListSub(n.pos, pos)))]) for n in self.nodes]
-					
+
 		nodes.sort(key = lambda n:n[1])
-		
-		if len(nodes) > 0:
-		
+
+		if nodes:
+
 			if raytest:
 				
 				for n in nodes:
-				
-					if obj.rayCast(pos, n[0].pos, 0, rayvar, 1, 1)[0] == None:
+
+					if obj.rayCast(pos, n[0].pos, 0, rayvar, 1, 1)[0] is None:
 						return n
-						
-					#print (obj.rayCast(pos, n[0].pos, 0, rayvar, 1, 1))
-					
-				return nodes[0]		# Found nodes, but no node has a clear shot to specified position, so just go for the closest one
-				
-			else:
-			
-				return nodes[0]	# Return the closest node to the specified position, regardless of whether it's a clear pathway or not
-		
+									
+								#print (obj.rayCast(pos, n[0].pos, 0, rayvar, 1, 1))
+
+			return nodes[0]		# Found nodes, but no node has a clear shot to specified position, so just go for the closest one
+
 		else:
-			
+
 			return None			# Didn't find a node
 	
 	# ~~ Map Handling ~~	
@@ -1073,35 +1020,35 @@ class CNodeMap(object):
 	# ~~ Debug Tools ~~
 	
 	def DebugDraw(self, uniquecolor = 1):
-	
+
 		"""
 		Draws the node points and the connections between them. For debugging purposes.
 		"""
-	
-		if len(self.nodes) > 0:
-			
-			for n in self.nodes:
-					
-				px = n.pos[0]
-				py = n.pos[1]
-				pz = n.pos[2]
-				
-				if uniquecolor:
-					nc = self.debugcolor #[1, 1, 0]
-					amt = 0.5
-					lc = [self.debugcolor[0] + amt, self.debugcolor[1] + amt, self.debugcolor[2] + amt] #[0, 1, 0]
-				else:
-					nc = [1, 1, 0]
-					lc = [0, 1, 0]	
-			
-				render.drawLine([px - 1, py, pz], [px, py - 1, pz], nc)		# Draw a diamond for each node
-				render.drawLine([px, py - 1, pz], [px + 1, py, pz], nc)
-				render.drawLine([px + 1, py, pz], [px, py + 1, pz], nc)
-				render.drawLine([px, py + 1, pz], [px - 1, py, pz], nc)
-				
-				for l in n.links:											
-					tp = l.pos
-					render.drawLine(n.pos, tp, lc)							# Also draw a line to each node link
+
+		if len(self.nodes) <= 0:
+			return
+		for n in self.nodes:
+
+			px = n.pos[0]
+			py = n.pos[1]
+			pz = n.pos[2]
+
+			if uniquecolor:
+				nc = self.debugcolor #[1, 1, 0]
+				amt = 0.5
+				lc = [self.debugcolor[0] + amt, self.debugcolor[1] + amt, self.debugcolor[2] + amt] #[0, 1, 0]
+			else:
+				nc = [1, 1, 0]
+				lc = [0, 1, 0]	
+
+			render.drawLine([px - 1, py, pz], [px, py - 1, pz], nc)		# Draw a diamond for each node
+			render.drawLine([px, py - 1, pz], [px + 1, py, pz], nc)
+			render.drawLine([px + 1, py, pz], [px, py + 1, pz], nc)
+			render.drawLine([px, py + 1, pz], [px - 1, py, pz], nc)
+
+			for l in n.links:											
+				tp = l.pos
+				render.drawLine(n.pos, tp, lc)							# Also draw a line to each node link
 		
 	def DebugDrawPath(self, path):
 	
@@ -1157,26 +1104,26 @@ class CAStarPath(object):
 		self.area = []
 		
 		def AddNode(np, node):
-		
+
 			if ray == 1:
-			
+
 				p = (np[0], np[1], np[2] + 1)
 				tp = (np[0], np[1], np[2] - 1)
-				
+
 				sol = obj.rayCast(tp, p, 4, 'solid', 1, 1)
-				
+
 				#print (sol)
-				
+
 				if sol[0] != None:
-				
+
 					#pos = RoundVec(sol[0].worldPosition)[:]
 					pos = np
 					solids[str(pos)] = sol[0]
 					#print ('solid found')
-			
+
 			nsp = str(np)							# Simply checks to see if the specified position is in the dict of solids or of those checked already
-			
-			if not nsp in solids and not nsp in checked:
+
+			if nsp not in solids and nsp not in checked:
 				n = self.CNode(np, node)
 				check[str(np)] = n
 				checked[str(np)] = n
@@ -1243,7 +1190,7 @@ class CAStarPath(object):
 			return -1 			# Path's not found. :(
 	
 	def Navigate(self, movespd = 0.1, linear = 1, zaxis = 1, obj = None, oncomplete = 0):
-		
+
 		"""
 		Moves the object obj on the path indictated from node to node. When a node has been reached, it moves
 		on to the next node in the path, if there is one.	
@@ -1256,49 +1203,46 @@ class CAStarPath(object):
 		
 		Returns 1 if the path is complete, and 0 otherwise.
 		"""
-	
-		if obj == None:
+
+		if obj is None:
 			obj = logic.getCurrentController().owner
-		
+
 		path = self.path
-				
+
 		if PosClose(obj.worldPosition, path[self.pathindex], 1, 0.1) == 1:
-		
+
 			if self.pathindex + 1 >= len(path):	# Path end
-			
+
 				#if oncomplete == 0:		# Stop
-			
+
 				#	return 1
-				
+
 				if oncomplete == 1:			# Reverse
-				
+
 					self.path.reverse()
 					self.pathindex = 0
-				
+
 				elif oncomplete == 2:
-				
+
 					self.pathindex = 0
-				
+
 				elif oncomplete == 3:		# Snap to start
-				
+
 					obj.worldPosition = self.path[0]
 					self.pathindex = 0
-				
+
 				return 1
-			
+
 			else:
-			
+
 				self.pathindex += 1
 		else:
-		
+
 			p = path[self.pathindex]
 			op = obj.worldPosition
-		
-			if not zaxis:
-				moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0])
-			else:
-				moveto = mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
-			
+
+			moveto = (mathutils.Vector([p[0] - op[0], p[1] - op[1], p[2] - op[2]])
+			          if zaxis else mathutils.Vector([p[0] - op[0], p[1] - op[1], 0.0]))
 			if linear:
 				moveto.magnitude = movespd * logic.getLogicTicRate()
 				moveto.z = obj.getLinearVelocity()[2]
@@ -1306,7 +1250,7 @@ class CAStarPath(object):
 			else:
 				moveto.magnitude = movespd
 				obj.applyMovement(list(moveto))
-		
+
 		return 0
 	
 	def DebugDrawNode(self, pos, color):
@@ -1370,14 +1314,13 @@ class CGRange(object):
 	"""
 
 	def __init__(self, stop, maximum, start = 0, step = 1, done = 0):
-	
+
 		self.max = maximum	# Maximum number to loop through, e.g. from 0 - 99 on a 0 - 10000 loop; after that, it's from 100 - 199 loop
 		self.stop = stop
 		self.start = start
 		self.index = start
 		self.step = step
 		self.whendone = done	# If the object should raise StopIteration error when finished (2), reset (1), or just return None (0)
-		pass
 		
 	def __iter__(self):
 	
@@ -1386,24 +1329,24 @@ class CGRange(object):
 	def __next__(self):
 
 		end = self.index + self.max
-		
+
 		if end > self.stop:
 			end = self.stop
-		
-		l = []
-		
+
 		if self.index < end:
 			
+			l = []
+
 			for i in range(self.index, end, self.step):
-			
+
 				l.append(i)
-				
+
 			self.index = i + 1
-			
+
 			return l
-		
+
 		else:
-		
+
 			if self.whendone == 0:
 				return None
 			elif self.whendone == 1:
@@ -1487,7 +1430,7 @@ class CJoyState(object):
 	"""
 
 	def __init__(self, joysensor):
-	
+
 		self.sensor = joysensor
 
 		self.connected = joysensor.connected
@@ -1496,31 +1439,31 @@ class CJoyState(object):
 		self.numAxis = joysensor.numAxis
 		self.numHat = joysensor.numHats
 		self.numButton = joysensor.numButtons
-		
+
 		self.axismax = 32768							# Maximum value the axis can move; usually, 32768 is the max
 		self.deadzone = 2000							# A basic deadzone that you can use for testing axis movements
-	
+
 		self.axis = self.sensor.axisValues				# The axis (analog values in analog mode, digital values in digital mode)
 		self.hat = self.sensor.hatValues				# The hat values for the joystick
 		self.button = self.sensor.getButtonActiveList()	# The curently active buttons for the joystick.
-		
+
 		self.prevaxis = None							# Previous axis, button, and hat values for the joystick (from one Poll() call ago).
 		self.prevhat = None
 		self.prevbutton = None	
 	
 	def Poll(self):
-	
+
 		self.connected = self.sensor.connected
-	
+
 		self.index = self.sensor.index					# Joystick index value; can be used to differentiate between joysticks
 		self.numAxis = self.sensor.numAxis
 		self.numHat = self.sensor.numHats
 		self.numButton = self.sensor.numButtons
-	
+
 		self.prevaxis = self.axis[:]
 		self.prevhat = self.hat[:]
 		self.prevbutton = self.button[:]
-	
+
 		self.axis = self.sensor.axisValues
 		self.hat = self.sensor.hatValues
 		self.button = self.sensor.getButtonActiveList()	
@@ -1535,7 +1478,7 @@ class CJoyState(object):
 	def ButtonReleased(self, button):
 		return (button not in self.button and button in self.prevbutton)
 	def ButtonPressed(self, button):
-		return (button in self.button and not button in self.prevbutton)
+		return button in self.button and button not in self.prevbutton
 	
 	def HatDown(self, hat):
 		"""
@@ -1547,19 +1490,19 @@ class CJoyState(object):
 	def HatHeld(self, hat):
 		return (hat in self.hat and hat in self.prevhat)
 	def HatReleased(self, hat):
-		return (not hat in self.hat and hat in self.prevhat)
+		return hat not in self.hat and hat in self.prevhat
 	def HatPressed(self, hat):
-		return (hat in self.hat and not hat in self.prevhat)
+		return hat in self.hat and hat not in self.prevhat
 		
 	def AxisDown(self, axis, dir, threshold = 32768/2.0):
-	
+
 		"""
 		Checks the axes (analog sticks or D-Pad) to see if they cross a threshold in a certain direction.
 		The threshold's separate because it seemed easier this way to find out if a stick was pressed in
 		a certain direction.
 		Valid directions are 1 and -1; usually, each analog stick has two axes (one for up and down, and one for left and right).
 		"""
-	
+
 		a = self.axis[axis]
 		if dir > 0:
 			return a > dir * threshold
@@ -1567,7 +1510,6 @@ class CJoyState(object):
 			return a < dir * threshold
 		else:
 			return 0
-			print ("No such direction as 0")
 	def AxisReleased(self, axis, dir, threshold = 32768/2.0):
 		a = self.axis[axis]
 		pa = self.prevaxis[axis]
@@ -1577,7 +1519,6 @@ class CJoyState(object):
 			return a >= dir * threshold and pa < dir * threshold
 		else:
 			return 0
-			print ("No such direction as 0")
 	def AxisPressed(self, axis, dir, threshold = 32768/2.0):
 		a = self.axis[axis]
 		pa = self.prevaxis[axis]
@@ -1587,7 +1528,6 @@ class CJoyState(object):
 			return a < dir * threshold and pa >= dir * threshold
 		else:
 			return 0
-			print ("No such direction as 0")
 	def AxisHeld(self, axis, dir, threshold = 32768/2.0):
 		a = self.axis[axis]
 		pa = self.prevaxis[axis]
@@ -1597,7 +1537,6 @@ class CJoyState(object):
 			return a < dir * threshold and pa < dir * threshold
 		else:
 			return 0
-			print ("No such direction as 0")
 	
 class CJoyProfile(object):
 
@@ -1754,21 +1693,21 @@ class CTimer(object):
 				
 	def Check(self, timername, variable, targetvalue, thresh):
 		
-		if not timername in self.target:
+		if timername not in self.target:
 			self.target[timername] = {'prevcheck':time.clock(), 'check':time.clock(), 'lastposcheck':-1}
-		
+
 		target = self.target[timername]
-		
+
 		target['prevcheck'] = target['check']
 		target['check'] = time.clock()
 
 		if (variable == targetvalue):
 			target['lastposcheck'] = time.clock()
-			
+
 		within = target['check'] - target['lastposcheck'] < thresh
-			
+
 		print (within)
-			
+
 		return within
 		
 		#	
@@ -1792,7 +1731,10 @@ def KeyDown(keycode):
 	"""
 	keydict = logic.keyboard.active_events
 	if keycode in keydict:
-		return keydict[keycode] == logic.KX_INPUT_JUST_ACTIVATED or keydict[keycode] == logic.KX_INPUT_ACTIVE
+		return keydict[keycode] in [
+		    logic.KX_INPUT_JUST_ACTIVATED,
+		    logic.KX_INPUT_ACTIVE,
+		]
 	else:
 		return False
 
@@ -1821,7 +1763,7 @@ def KeyReleased(keycode):
 		return False
 
 def KeyHeld(keycode):
-	
+
 	"""
 	Tests to see if a key is being held down on the keyboard.
 	You don't need to define a keydict - it can use the one from the logic module.
@@ -1835,49 +1777,52 @@ def KeyHeld(keycode):
 def MouseDown(mousecode):
 	
 	mousedict = logic.mouse.active_events
-	
+
 	if mousecode in mousedict:
 		
-		return mousedict[mousecode] == logic.KX_INPUT_JUST_ACTIVATED or mousedict[mousecode] == logic.KX_INPUT_ACTIVE
-	
+		return mousedict[mousecode] in [
+		    logic.KX_INPUT_JUST_ACTIVATED,
+		    logic.KX_INPUT_ACTIVE,
+		]
+
 	else:
-		
+
 		return False
 	
 def MouseHeld(mousecode):
-	
+
 	mousedict = logic.mouse.active_events
-	
+
 	if mousecode in mousedict:
-		
+
 		return mousedict[mousecode] == logic.KX_INPUT_ACTIVE
-	
+
 	else:
-		
+
 		return False
 	
 def MousePressed(mousecode):
-	
+
 	mousedict = logic.mouse.active_events
-	
+
 	if mousecode in mousedict:
-		
+
 		return mousedict[mousecode] == logic.KX_INPUT_JUST_ACTIVATED
-	
+
 	else:
-		
+
 		return False
 	
 def MouseReleased(keycode):
-	
+
 	mousedict = logic.mouse.active_events
-	
+
 	if mousecode in mousedict:
-		
+
 		return mousedict[mousecode] == logic.KX_INPUT_JUST_RELEASED
-	
+
 	else:
-		
+
 		return False
 	
 #### BGUI PYTHON FUNCTIONS ####
@@ -1922,9 +1867,7 @@ def LockToGridList(l, grid):
 	The list can be any size.
 	"""
 	
-	locked = [LockToGrid(l[x], grid) for x in range(len(l))]
-	
-	return (locked)
+	return [LockToGrid(l[x], grid) for x in range(len(l))]
 def ListSub(lone, ltwo):
 	"""
 	Subtracts two lists and returns the resulting list. Lists can be any size. Lists also don't need 
@@ -1977,12 +1920,7 @@ def ListCom(lone):
 	Combines all elements in a 1 DIMENSIONAL list.
 	"""
 
-	a = 0
-	
-	for x in range(len(lone)):
-		a += lone[x]
-		
-	return a
+	return sum(lone[x] for x in range(len(lone)))
 def ListAbs(lone):
 
 	"""
@@ -2033,12 +1971,12 @@ def KeepRadian(value):
 	"""
 	
 	while (value > math.pi or value < -math.pi):
-	
+
 		if value > math.pi:
 			value -= twopi
-		elif value < -math.pi:
+		else:
 			value += twopi
-	
+
 	return value
 
 def InRange(value, min, max, inclusive = 1):
@@ -2047,26 +1985,18 @@ def InRange(value, min, max, inclusive = 1):
 	Inclusive = 1 or 0 - defines whether to evaluate as true when 'value' is equal to 'min' or 'max'. Default = 1.
 	value, min, max = number
 	"""
-	if inclusive:
-		if value >= min and value <= max:
-			return 1
-		else:
-			return 0
+	if (inclusive and value >= min and value <= max
+	    or not inclusive and value > min and value < max):
+		return 1
 	else:
-		if value > min and value < max:
-			return 1
-		else:
-			return 0	
+		return 0	
 
 def OutRange(value, min, max):
 	"""
 	Returns true when 'value' is out of the range of 'min' to 'max'.
 	value, min, max = number
 	"""
-	if value < min or value > max:
-		return 1
-	else:
-		return 0
+	return 1 if value < min or value > max else 0
 
 def VectorRound(vector, roundval = 1):
 	"""
@@ -2090,20 +2020,14 @@ def Lerp(a, b, scalar):
 
 def ListLerp(a, b, scalar):
 	
-	returnlist = []
-	
-	for item in range(len(a)):
-		returnlist.append(Lerp(a[item], b[item], scalar))
-	
-	return returnlist
+	return [Lerp(a[item], b[item], scalar) for item in range(len(a))]
 
 def XLerp(a, b, scalar, multiple = 2):
 	"""XLerp - Does what Lerp does, but uses multiples to allow for the ability
 	to clamp values (i.e. have the function return 1 when the scalar is between 0.5 and 1)"""
 	s = scalar
 	s *= multiple
-	if s > 1:
-		s = 1
+	s = min(s, 1)
 	return (a + s * (b - a))
 
 def Clamp(value, min, max = None):
@@ -2125,20 +2049,20 @@ def Clamp(value, min, max = None):
 	Clamp(variable, 10)
 	
 	"""
-	if max != None:
-		if value > max:
-			return max
-		elif value < min:
-			return min
-		else:
-			return value
-	else:
+	if max is None:
 		if value > -min:
 			return -min
 		elif value < min:
 			return min
 		else:
 			return value
+
+	elif value > max:
+		return max
+	elif value < min:
+		return min
+	else:
+		return value
 
 def Sign(value):					
 	"""
@@ -2152,7 +2076,7 @@ def Sign(value):
 		return 0
 
 def RandomList(base = [0.0, 0.0, 0.0, 0.0], top = [1.0, 1.0, 1.0, 1.0], lock = [-1, -1, -1, -1]):
-	
+
 	"""
 	Returns a random 4-component sequence. Good for colors.
 	
@@ -2169,18 +2093,18 @@ def RandomList(base = [0.0, 0.0, 0.0, 0.0], top = [1.0, 1.0, 1.0, 1.0], lock = [
 	
 	"""
 	
-	if isinstance(base, float) or isinstance(base, int): # If you use a single value, it will be turned into a list.
+	if isinstance(base, (float, int)): # If you use a single value, it will be turned into a list.
 		base = [base, base, base, base]
-	
-	if isinstance(top, float) or isinstance(top, int): # If you use a single value, it will be turned into a list.
+
+	if isinstance(top, (float, int)): # If you use a single value, it will be turned into a list.
 		base = [top, top, top, top]
-		
+
 	#d = top - base
-	
+
 	d = ListSub(top, base)
-	
+
 	#print (d)
-		
+
 	r = [base[0] + (random.random() * d[0]) , base[1] + (random.random() * d[1]) , 
 		base[2] + (random.random() * d[2]) , base[3] + (random.random() * d[3]) ]
 
@@ -2192,11 +2116,11 @@ def RandomList(base = [0.0, 0.0, 0.0, 0.0], top = [1.0, 1.0, 1.0, 1.0], lock = [
 		r[2] = lock[2]
 	if lock[3] >= 0:
 		r[3] = lock[3]
-		
+
 	return r
 
 def RandomNumber(base = 0.0, top = 1.0):
-	
+
 	"""
 	Returns a random number between base and top.
 	
@@ -2205,10 +2129,8 @@ def RandomNumber(base = 0.0, top = 1.0):
 	"""
 
 	d = float(top) - float(base)
-	
-	r = float(base) + (random.random() * d)
-		
-	return r
+
+	return float(base) + (random.random() * d)
 
 def GetAngle(obj, destobj, xy = 0):
 	"""
@@ -2222,18 +2144,18 @@ def GetAngle(obj, destobj, xy = 0):
 
 	if isinstance(obj, mathutils.Vector):					# If it's a vector, pos = the vector
 		pos = obj
-	elif isinstance(obj, list) or isinstance(obj, tuple): 	# If it's a tuple or list, make it a vector
+	elif isinstance(obj, (list, tuple)): 	# If it's a tuple or list, make it a vector
 		pos = mathutils.Vector(obj)
 	else:													# If it's a game object, use its world position
 		pos = obj.worldPosition
-	
+
 	if isinstance(destobj, mathutils.Vector):
 		dpos = destobj
-	elif isinstance(destobj, list) or isinstance(destobj, tuple):
+	elif isinstance(destobj, (list, tuple)):
 		dpos = mathutils.Vector(destobj)
 	else:
 		dpos = destobj.worldPosition
-		
+
 	if xy == 0:
 		return (math.atan2(pos.y - dpos.y, pos.x - dpos.x))
 	elif xy == 1:
@@ -2246,22 +2168,22 @@ def GetAngle(obj, destobj, xy = 0):
 def Noise(size = [1, 1, 1], seed = 0, base = 0.0, top = 100.0):
 	
 	grid = []
-	
+
 	random.seed(seed)
-	
+
 	for z in range(size[2]): 			# Create the array
 		grid.append([])
 		for y in range(size[1]):
 			grid[z].append([])
-			for x in range(size[0]):
+			for _ in range(size[0]):
 				grid[z][y].append(base)
-	
+
 	for z in range(size[2]): 			# Populate the array
 		for y in range(size[1]):
 			for x in range(size[0]):
-				
+
 				grid[z][y][x] = random.Random()
-				
+
 	return grid
 		
 #### GENERAL FUNCTIONS ###
@@ -2282,12 +2204,8 @@ def InitVar(variablename, value = 0, object = None):
 	IF it doesn't already exist in the 'object'.
 	"""
 	
-	if object == None:
-		obj = logic.getCurrentController().owner
-	else:
-		obj = object
-	
-	if not variablename in obj:
+	obj = logic.getCurrentController().owner if object is None else object
+	if variablename not in obj:
 		obj[variablename] = value
 
 def FindChild(obj, childname, exact = 0):
@@ -2301,39 +2219,30 @@ def FindChild(obj, childname, exact = 0):
 	
 	exact = Whether or not to look for EXACTLY the child's name or not
 	"""
-	for child in obj.children:
-		if exact:
-			if childname == child.name:
-				return child
-		else:
-			if childname in child.name.lower():	
-				return child
-	return None		# childname wasn't found in the list of obj's children, so return None (no children)
+	return next(
+	    (child for child in obj.children if exact and childname == child.name
+	     or not exact and childname in child.name.lower()),
+	    None,
+	)
 
-def GetFPS(safe = 1):						
+def GetFPS(safe = 1):
 	"""
 	Returns the FPS of the game; note that because Blender's function may be off, with 'safe' on, it may return
 	logic's tic rate instead of the averageFrameRate (sometimes it returns extremely large values);
 	To enable this safeguard, set 'safe' to 1
 	"""
-	if safe:
-		if logic.getAverageFrameRate() > 0.0:	# Sometimes the framerate varies wildly or isn't larger than zero
-			return logic.getAverageFrameRate()
-		else:									# In this case, use the logic tic rate
-			return logic.getLogicTicRate()
-	else:
-		return logic.getAverageFrameRate()		# Just get the average FPS
+	if safe and logic.getAverageFrameRate() > 0.0 or not safe:	# Sometimes the framerate varies wildly or isn't larger than zero
+		return logic.getAverageFrameRate()
+	else:									# In this case, use the logic tic rate
+		return logic.getLogicTicRate()
 
-def Evaluate(var):           
+def Evaluate(var):
 	"""
 	Check to see if an object property is a string can be converted to a normal variable.
 	If so, then it evaluates the string and returns it; otherwise, just the value is returned.
 	"""
 	
-	if isinstance(var, str):
-		return eval(var)
-	else:
-		return value	
+	return eval(var) if isinstance(var, str) else value	
 	
 def GetThisFile():
 
@@ -2341,17 +2250,14 @@ def GetThisFile():
 
 ### POSITION FUNCTIONS ###
 
-def Close(x, y, tol = 0.1):		
+def Close(x, y, tol = 0.1):
 	"""
 	Tests to see if the two numbers 'x' and 'y' are within a certain tolerance
 	x = number
 	y = number
 	tol = maximum tolerance between the two
 	"""
-	if abs(x - y) <= tol:
-		return 1
-	else:
-		return 0
+	return 1 if abs(x - y) <= tol else 0
 
 def PosClose(posone, postwo, elevation = 1, tol = 1.0):
 	"""
@@ -2389,7 +2295,7 @@ def VectorDown(position = None, range = 1):
 	range = optional argument indicating how far the vector should go stretch (by default, it's 100 Blender Units)
 	"""
 	
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.z -= range
@@ -2405,7 +2311,7 @@ def VectorRight(position = None, range = 1):
 	position = object's position to create the 'down' vector from.
 	range = optional argument indicating how far the vector should go stretch (by default, it's 100 Blender Units)
 	"""
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.x += range
@@ -2421,7 +2327,7 @@ def VectorLeft(position = None, range = 1):
 	position = object's position to create the 'left' vector from.
 	range = optional argument indicating how far the vector should go stretch (by default, it's 100 Blender Units)
 	"""
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.x -= range
@@ -2437,7 +2343,7 @@ def VectorUp(position = None, range = 1):
 	position = object's position to create the 'up' vector from.	
 	range = optional argument indicating how far up the vector should go stretch (by default, it's 100 Blender Units)
 	"""
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.z += range
@@ -2453,7 +2359,7 @@ def VectorForward(position = None, range = 1):
 	position = object's position to create the 'forward' vector from.	
 	range = optional argument indicating how far the vector should go stretch (by default, it's 100 Blender Units)
 	"""
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.y += range
@@ -2469,7 +2375,7 @@ def VectorBackward(position = None, range = 1):
 	position = object's position to create the 'backward' vector from.	
 	range = optional argument indicating how far the vector should go stretch (by default, it's 100 Blender Units)
 	"""
-	if position == None:
+	if position is None:
 		position = logic.getCurrentController().owner.position
 	p = position.copy()
 	p.y -= range
@@ -2486,7 +2392,7 @@ def Scale(amount, obj = None):
 	"""
 
 	s = obj.scaling
-	
+
 	if isinstance(amount, list):
 		obj.scaling = [s[0] + amount[0], s[1] + amount[1], s[2] + amount[2]]
 	else:
@@ -2516,89 +2422,87 @@ def MouseLook(obj = None, lockrot = 0, turnspd = 1.0, upcap = 1.4, downcap = -1.
 	"""
 
 	cont = logic.getCurrentController()
-	
-	if obj == None:
+
+	if obj is None:
 		obj = cont.owner
 
 	mouse = logic.mouse
-	
+
 	win_w = render.getWindowWidth()
 	win_h = render.getWindowHeight()
-	
+
 	#render.setMousePosition(int(win_w / 2), int(win_h / 2))	# Center mouse; SHOULD ONLY BE DONE IF THE MOUSE GETS UNWIELDY
 
-	if not 'ml_rotx' in obj:
-	
+	if 'ml_rotx' not in obj:
+
 		obj['ml_rotx'] = -(obj.localOrientation.to_euler().x - (math.pi * 0.5))
-		
+
 		render.setMousePosition(int(win_w / 2), int(win_h / 2))	# Center mouse; SHOULD ONLY BE DONE IF THE MOUSE GETS UNWIELDY
-		
+
 		obj['prevmouse'] = [0.5, 0.5]
-		
+
 		obj['mousevel'] = mathutils.Vector([0.0, 0.0])
-		
+
 		#print (mouse.position, obj['prevmouse'])
 
 		#obj['ml_rotx'] = 0.0
-		
+
 	else:
 
 		#print (tuple(mouse.position) + tuple(obj['mousevel']))
 
 		toedge = mathutils.Vector(mouse.position) + obj['mousevel']
-		
+
 		if speedadd:
-			
+
 			obj['mousevel'] *= friction
-	
+
 			obj['mousevel'].x += (mouse.position[0] - obj['prevmouse'][0]) * (turnspd * 0.1)
 			obj['mousevel'].y += (mouse.position[1] - obj['prevmouse'][1]) * (turnspd * 0.1)
 
 		else:
-			
+
 			obj['mousevel'].x = (mouse.position[0] - obj['prevmouse'][0]) * turnspd
 			obj['mousevel'].y = (mouse.position[1] - obj['prevmouse'][1]) * turnspd
 
 		obj['prevmouse'] = [mouse.position[0], mouse.position[1]]
-		
+
 		if macfix:
-			
+
 			margin = 0.1
-		
+
 			if toedge.x < margin or toedge.x > 1.0 - margin or toedge.y < margin or toedge.y > 1.0 - margin:
-				
+
 				#print ('reset')
-				
+
 				render.setMousePosition(int(win_w / 2), int(win_h / 2))
-				
+
 				#obj['mousevel'].x = 0.0
 				#obj['mousevel'].y = 0.0
-				
+
 				obj['prevmouse'] = [0.5, 0.5]
-				
+
 		else:
-			
+
 			render.setMousePosition(int(win_w / 2), int(win_h / 2))
-			
+
 			obj['mousevel'].x = mouse.position[0] - 0.5
 			obj['mousevel'].y = mouse.position[1] - 0.5
-						
+
 		mouse_mx = obj['mousevel'].x
 		mouse_my = obj['mousevel'].y
-		
+
 		if abs(mouse_mx) > min or abs(mouse_my) > min:
-	
-			if not lockrot == 2:
-	
+			
+			if lockrot != 2:
+
 				obj.applyRotation([0, 0, -mouse_mx], 0)
-				
-			if not lockrot == 1:
-				
-				if (obj['ml_rotx'] - mouse_my) < upcap and (obj['ml_rotx'] - mouse_my) > downcap:
 
-					obj['ml_rotx'] -= mouse_my
+			if (lockrot != 1 and (obj['ml_rotx'] - mouse_my) < upcap
+			    and (obj['ml_rotx'] - mouse_my) > downcap):
+				obj['ml_rotx'] -= mouse_my
 
-					obj.applyRotation([-mouse_my, 0, 0], 1)		# Apply local rotation last, after the global rotation to avoid camera's twisting	
+				obj.applyRotation([-mouse_my, 0, 0], 1)		# Apply local rotation last, after the global rotation to avoid camera's twisting	
 					
 def OldMouseLook(obj = None, lockrot = 0, movespd = 1.0, upcap = 1.4, downcap = -1.4, min = 0.002):
 	"""
@@ -2616,40 +2520,38 @@ def OldMouseLook(obj = None, lockrot = 0, movespd = 1.0, upcap = 1.4, downcap = 
 	"""
 
 	cont = logic.getCurrentController()
-	
-	if obj == None:
+
+	if obj is None:
 		obj = cont.owner
 
 	mouse = logic.mouse
-	
+
 	win_w = render.getWindowWidth()
 	win_h = render.getWindowHeight()
-	
+
 	render.setMousePosition(int(win_w / 2), int(win_h / 2))	# Center mouse; SHOULD ONLY BE DONE IF THE MOUSE GETS UNWIELDY
-	
-	if not 'ml_rotx' in obj:
-	
+
+	if 'ml_rotx' not in obj:
+
 		obj['ml_rotx'] = -(obj.localOrientation.to_euler().x - (math.pi * 0.5))
 		#obj['ml_rotx'] = 0.0
-		
+
 	else:
 
 		mouse_mx = (mouse.position[0] - 0.5) * movespd
 		mouse_my = (mouse.position[1] - 0.5) * movespd
-	
+
 		if abs(mouse_mx) > min or abs(mouse_my) > min:
-	
-			if not lockrot == 2:
-	
+			
+			if lockrot != 2:
+
 				obj.applyRotation([0, 0, -mouse_mx], 0)
-				
-			if not lockrot == 1:
-				
-				if (obj['ml_rotx'] - mouse_my) < upcap and (obj['ml_rotx'] - mouse_my) > downcap:
 
-					obj['ml_rotx'] -= mouse_my
+			if (lockrot != 1 and (obj['ml_rotx'] - mouse_my) < upcap
+			    and (obj['ml_rotx'] - mouse_my) > downcap):
+				obj['ml_rotx'] -= mouse_my
 
-					obj.applyRotation([-mouse_my, 0, 0], 1)		# Apply local rotation last, after the global rotation to avoid camera's twisting	
+				obj.applyRotation([-mouse_my, 0, 0], 1)		# Apply local rotation last, after the global rotation to avoid camera's twisting	
 
 def MouseOrbit(spd = 2.0, xrev = 1, yrev = 0, capspd = 0.075, minimum = 0.002, mb = 0, fixed = 1):
 
@@ -2678,50 +2580,44 @@ def MouseOrbit(spd = 2.0, xrev = 1, yrev = 0, capspd = 0.075, minimum = 0.002, m
 		mmb = events.RIGHTMOUSE
 	else:
 		mmb = None
-		
+
 	winw = render.getWindowWidth()
 	winh = render.getWindowHeight()
 
 	render.setMousePosition(int(winw / 2), int(winh / 2))
 
-	if not 'mouseorbitinit' in obj:
-		
-		obj['mouseorbitinit'] = 1		# Eliminate initial view change.
-		
-	else:
-	
-		#minimum = 0.002  # How little you have to move the mouse to rotate the view (eliminates drifting)
-		
-		if mmb == None or mouse.events[mmb]:
-			
-			mx = mouse.position[0] - 0.5
-			my = mouse.position[1] - 0.5
-			
-			#print (mx, my)
+	if 'mouseorbitinit' not in obj:
 
-			mx = Clamp(mx, -capspd)
-			my = Clamp(my, -capspd)
+		obj['mouseorbitinit'] = 1		# Eliminate initial view change.
+
+	elif mmb is None or mouse.events[mmb]:
 			
-			if xrev:
-				mx = -mx
-			if yrev:
-				my = -my
-			
-			if fixed:
-			
-				if abs(mx) > minimum:
-					
-					obj.applyRotation([0.0, 0.0, mx * spd], 0)
-					
-				if abs(my) > minimum:
-				
-					obj.applyRotation([my * spd, 0.0, 0.0], 1)
-			
-			else:
-			
-				if max(abs(mx), abs(my)) > minimum:
-		
-					obj.applyRotation([my * spd, 0.0, mx * spd], 1) # Apply rotation to the Helper object depending on how fast you move the mouse, combined with the speed variable above
+		mx = mouse.position[0] - 0.5
+		my = mouse.position[1] - 0.5
+
+		#print (mx, my)
+
+		mx = Clamp(mx, -capspd)
+		my = Clamp(my, -capspd)
+
+		if xrev:
+			mx = -mx
+		if yrev:
+			my = -my
+
+		if fixed:
+
+			if abs(mx) > minimum:
+
+				obj.applyRotation([0.0, 0.0, mx * spd], 0)
+
+			if abs(my) > minimum:
+
+				obj.applyRotation([my * spd, 0.0, 0.0], 1)
+
+		elif max(abs(mx), abs(my)) > minimum:
+
+			obj.applyRotation([my * spd, 0.0, mx * spd], 1) # Apply rotation to the Helper object depending on how fast you move the mouse, combined with the speed variable above
 
 def MouseOrbitSpeed(spd = 2.0, xrev = 1, yrev = 0, capspd = 0.075, minimum = 0.002, mb = 2, center = 1):
 
@@ -2749,41 +2645,41 @@ def MouseOrbitSpeed(spd = 2.0, xrev = 1, yrev = 0, capspd = 0.075, minimum = 0.0
 		mmb = events.RIGHTMOUSE
 	else:
 		mmb = None
-		
+
 	winw = render.getWindowWidth()
 	winh = render.getWindowHeight()
 
 	#minimum = 0.002  # How little you have to move the mouse to rotate the view (eliminates drifting)
 
-	if not 'mouseorbitinit' in obj:
-		
+	if 'mouseorbitinit' not in obj:
+
 		obj['mouseorbitinit'] = 1
-	
+
 	else:
-	
-		if mmb == None or mouse.events[mmb] == 1 and center:
-			
+
+		if mmb is None or mouse.events[mmb] == 1 and center:
+
 			render.setMousePosition(int(winw / 2), int(winh / 2))
 
-		if mmb == None or mouse.events[mmb] == 2:    
+		if mmb is None or mouse.events[mmb] == 2:    
 
 			mx = mouse.position[0] - 0.5
 			my = mouse.position[1] - 0.5 
-			
+
 			mx = Clamp(mx, -capspd)
 			my = Clamp(my, -capspd)
-			
+
 			if xrev:
 				mx = -mx
 			if yrev:
 				my = -my
-			
+
 			if abs(mx) > minimum:
-				
+
 				obj.applyRotation([0.0, 0.0, mx * spd], 0)
-				
+
 			if abs(my) > minimum:
-			
+
 				obj.applyRotation([my * spd, 0.0, 0.0], 1)
 
 def LODSimple(high, highdist, medium, meddist = None, low = None, object = None):
@@ -2801,33 +2697,24 @@ def LODSimple(high, highdist, medium, meddist = None, low = None, object = None)
 	"""
 	
 	from bge import logic
-	
-	if object == None:
-		obj = logic.getCurrentController().owner
-	else:
-		obj = object
-	
+
+	obj = logic.getCurrentController().owner if object is None else object
 	cam = logic.getCurrentScene().active_camera
 
-	if low == None:
-	
-		if obj.getDistanceTo(cam) > highdist:
-			obj.replaceMesh(medium)
-		else:
-			obj.replaceMesh(high)		
-	
+	if low is None and obj.getDistanceTo(cam) > highdist:
+		obj.replaceMesh(medium)
+	elif (low is None and obj.getDistanceTo(cam) <= highdist
+	      or low != None and obj.getDistanceTo(cam) <= highdist):
+		obj.replaceMesh(high)		
+
 	else:
-		
-		if obj.getDistanceTo(cam) > highdist:
-			try:
-				if obj.getDistanceTo(cam) > meddist:
-					obj.replaceMesh(low)
-				else:
-					obj.replaceMesh(medium)
-			except:
-				print ("You can't use the LOD without a maximum medium distance in 'meddist', but with a low-detail mesh.")
-		else:
-			obj.replaceMesh(high)
+		try:
+			if obj.getDistanceTo(cam) > meddist:
+				obj.replaceMesh(low)
+			else:
+				obj.replaceMesh(medium)
+		except:
+			print ("You can't use the LOD without a maximum medium distance in 'meddist', but with a low-detail mesh.")
 
 def LOD(detaillist, object = None, camera = None, replaceonce = 1):
 
@@ -2860,45 +2747,33 @@ def LOD(detaillist, object = None, camera = None, replaceonce = 1):
 		or overlay) might work, as well).
 	"""
 
-	if object == None:
-		obj = logic.getCurrentController().owner
-	else:
-		obj = object
-	
-	if camera == None:
-		cam = logic.getCurrentScene().active_camera
-	else:
-		cam = camera
-	
+	obj = logic.getCurrentController().owner if object is None else object
+	cam = logic.getCurrentScene().active_camera if camera is None else camera
 	mesh = [-1, None]
-	
-	for entry in detaillist:	# Loop through the detail list and find the entry that's closest to the camera
-	
+
+	for entry in detaillist:# Loop through the detail list and find the entry that's closest to the camera
+
 		dist = obj.getDistanceTo(cam)	
-	
-		if dist > entry[0]:		# The distance to the camera is greater than the minimum distance for the detail mesh, so consider it
-		
-			if mesh[0] == -1:	# There is no previous mesh to use, so go with this one
-			
+
+		if dist > entry[0]:
+			if mesh[0] == -1:
 				mesh = entry
-			
-			else:				# There is a previous mesh to use, so compare the two (the current one in entry, and the previous one in mesh)
-		
-				if dist - entry[0] < dist - mesh[0]:	# Compare the current mesh entry's distance value
-				
-					mesh = entry 						# with the previous mesh's minimum distance to find the one that's closest.
-					
-					# e.g. High poly mesh at 0, low poly at 50, camera at 100 
-					# 100 - 0 = 100, 100 - 50 = 50, low poly is closest, so go with that mesh
-					
+
+			elif dist - entry[0] < dist - mesh[0]:	# Compare the current mesh entry's distance value
+
+				mesh = entry 						# with the previous mesh's minimum distance to find the one that's closest.
+
+				# e.g. High poly mesh at 0, low poly at 50, camera at 100 
+				# 100 - 0 = 100, 100 - 50 = 50, low poly is closest, so go with that mesh
+
 	if replaceonce:
-	
+
 		if str(obj.meshes[0]) != mesh[1]:	# Only replace the mesh if the object's current mesh isn't equal to the one to use (if it's equal, then the mesh was replaced earlier)
-		
+
 			obj.replaceMesh(mesh[1])
-	
+
 	else:
-		
+
 		obj.replaceMesh(mesh[1])
 
 def Occlude(obj = None, size = [2, 2, 2], offset = [0, 0, 0], prop = '', cam = None):
@@ -2924,21 +2799,17 @@ def Occlude(obj = None, size = [2, 2, 2], offset = [0, 0, 0], prop = '', cam = N
 	"""
 	
 	def Check(r):
-		if r != None:
-			return 1
-		else:
-			return 0
+		return 1 if r != None else 0
 
 	def Offset(vec):
-	
-		if offset[0] != 0 or offset[1] != 0 or offset[2] != 0:
-			v = vec
-			v[0] += offset[0]
-			v[1] += offset[1]
-			v[2] += offset[2]
-			return v
-		else:
+
+		if offset[0] == 0 and offset[1] == 0 and offset[2] == 0:
 			return vec
+		v = vec
+		v[0] += offset[0]
+		v[1] += offset[1]
+		v[2] += offset[2]
+		return v
 
 	if cam == None:
 		cam = logic.getCurrentScene().active_camera
@@ -3038,9 +2909,9 @@ def TrackTo(dest, obj = None, axis = 'y', time = 0, dimensions = "xyz"):
 	dimensions = specify which global axes to track on; you can select which ones to align to the object
 	"""
 
-	if obj == None:
+	if obj is None:
 		obj = logic.getCurrentController().owner
-		
+
 	if axis == 'x':
 		axis = 0
 	elif axis == 'y':
@@ -3049,14 +2920,14 @@ def TrackTo(dest, obj = None, axis = 'y', time = 0, dimensions = "xyz"):
 		axis = 2
 
 	vect = obj.getVectTo(dest)
-	
+
 	if dimensions.count("x") == 0:
 		vect[1].x = 0
 	if dimensions.count("y") == 0:
 		vect[1].y = 0
 	if dimensions.count("z") == 0:
 		vect[1].z = 0
-		
+
 	if time > 0:
 		obj.alignAxisToVect(vect[1], axis, 1.0/time)
 	else:
@@ -3101,7 +2972,7 @@ def GetColor(x, y, array, size, comp = 4):
 		y = 0
 	elif y > height - 1:
 		y = height - 1
-		
+
 	value = (math.floor(x) * comp) + ((math.floor(y) * comp) * width)
 	value = int(value)
 
@@ -3113,7 +2984,7 @@ def GetColor(x, y, array, size, comp = 4):
 ### BGE MESH FUNCTIONS ###
 
 def GetSharedVertices(mesh, vert, max_diff = 0, mat = 0):
-	
+
 	"""Returns the vertices sharing the position occupied by the vertex 'vert'. 
 	'mesh' = which object's vertices to check; 
 	'vert' = which vertex to find the duplicates of
@@ -3122,18 +2993,17 @@ def GetSharedVertices(mesh, vert, max_diff = 0, mat = 0):
 	and	should only be done rarely to keep up efficiency."""
 
 	list = []
-	
+
 	for a in range(mesh.getVertexArrayLength(mat)):
 
 		v = mesh.getVertex(mat, a)
-		
-		if max_diff != 0:
-			if abs(v.x - vert.x) < max_diff and abs(v.y - vert.y) < max_diff and abs(v.z - vert.z) < max_diff:
-				list.append(v)
-		else:
+
+		if max_diff == 0:
 			if v.x == vert.x and v.y == vert.y and v.z == vert.z:
 				list.append(v)
-	
+
+		elif abs(v.x - vert.x) < max_diff and abs(v.y - vert.y) < max_diff and abs(v.z - vert.z) < max_diff:
+			list.append(v)
 	return list
 
 def GetFaces(mesh):
@@ -3153,21 +3023,17 @@ def GetVertices(mesh = None, shared = 1, mat = 0):
 	"""
 	verts = []
 
-	if mesh == None:
+	if mesh is None:
 		obj = logic.getCurrentController().owner
 		mesh = obj.meshes[0]
-	
+
 	for v in range(mesh.getVertexArrayLength(mat)):
 
 		vert = mesh.getVertex(mat, v)
 		xyz = vert.getXYZ()
-		
-		if shared:		# If the function should eliminate vertices that are already present, as in certain cases, BGE meshes return more vertices than are actually there
-			if not xyz in verts:
-				verts.append(xyz)
-		else:
+
+		if shared and xyz not in verts or not shared:
 			verts.append(xyz)
-	
 	return verts
 
 def FurthestVertices(mesh = None):
@@ -3178,37 +3044,37 @@ def FurthestVertices(mesh = None):
 	Returns a list of the two (mathematically) furthest points on the mesh.
 	"""
 	
-	if mesh == None:
+	if mesh is None:
 		obj = logic.getCurrentController().owner
 		mesh = obj.meshes[0]
-	
+
 	verts = []  
-	
+
 	for v in range(mesh.getVertexArrayLength(0)):
 		vert = mesh.getVertex(0, v)
 		verts.append(vert.getXYZ())
-        
+
 	verts.sort()
-    
-	verts = [verts[0], verts[len(verts) - 1]]
-    
+
+	verts = [verts[0], verts[-1]]
+
 	return verts	
 		
 ### MISC. BGE FUNCTIONS ###
 
 def GetGLBindID(obj, material = None):
-	
+
 	"""
 	An attempt at getting an OpenGL Bind ID from a texture, given an object and material name. It's only useful if you're messing about
 	with OpenGL, blitting a texture over the screen. I'm not sure if this will work, but it should... Maybe. :P
 	"""
 
-	if material == None:
+	if material is None:
 		material = obj.meshes[0].materials[0]
-		
+
 	matid = texture.materialID(obj, str(material))
 	t = texture.Texture(obj, matid)
-	
+
 	bindid = t.bindId
 	t.close()
 	del t
@@ -3249,41 +3115,39 @@ def GetDimensions(object, roundit = 3, mesh = None):
 	"""
 
 	s = object.worldScale
-	
-	if mesh == None:	
+
+	if mesh is None:	
 		mesh = object.meshes[0]
 
 	#print (dir(mesh))
-	
+
 	verts = [[], [], []]
-	
+
 	for v in range(mesh.getVertexArrayLength(0)):
-	
+
 		vert = mesh.getVertex(0, v)
-		
+
 		pos = vert.getXYZ()
-		
+
 		verts[0].append(pos[0])
 		verts[1].append(pos[1])
 		verts[2].append(pos[2])
-	
+
 	verts[0].sort()
 	verts[1].sort()
 	verts[2].sort()
 
-	if roundit >= 0:
-		size = [
-		round( (verts[0][len(verts[0]) - 1] - verts[0][0]) * s[0] , roundit), 
-		round( (verts[1][len(verts[0]) - 1] - verts[1][0]) * s[1] , roundit), 
-		round( (verts[2][len(verts[0]) - 1] - verts[2][0]) * s[2] , roundit) ]
-	else:
-		size = [(verts[0][len(verts[0]) - 1] - verts[0][0]) * s[0], 
-		(verts[1][len(verts[0]) - 1] - verts[1][0]) * s[1], 
-		(verts[2][len(verts[0]) - 1] - verts[2][0]) * s[2]]
-		
 	#print (size)
-	
-	return (size)
+
+	return ([
+	    round((verts[0][len(verts[0]) - 1] - verts[0][0]) * s[0], roundit),
+	    round((verts[1][len(verts[0]) - 1] - verts[1][0]) * s[1], roundit),
+	    round((verts[2][len(verts[0]) - 1] - verts[2][0]) * s[2], roundit),
+	] if roundit >= 0 else [
+	    (verts[0][len(verts[0]) - 1] - verts[0][0]) * s[0],
+	    (verts[1][len(verts[0]) - 1] - verts[1][0]) * s[1],
+	    (verts[2][len(verts[0]) - 1] - verts[2][0]) * s[2],
+	])
 
 def AxisCheck(mx, my, mz, dist = 1.0, prop = 'wall', face = 1, xray = 1, poly = 1):
 	"""
@@ -3317,23 +3181,19 @@ def UVScroll(uspd = 0.0025, vspd = 0.0, layer = 0, mesh = None, mat = 0, freqstr
 
 	cont = logic.getCurrentController()
 	obj = cont.owner
-	
-	if mesh == None:
+
+	if mesh is None:
 		mesh = obj.meshes[mat]
 
-	if freqstretch:
-		f = cont.sensors[0].frequency + 1
-	else:
-		f = 1
-		
+	f = cont.sensors[0].frequency + 1 if freqstretch else 1
 	for v in range(mesh.getVertexArrayLength(mat)):
 		
 		vert = mesh.getVertex(0, v)
 
-		if layer == 0 or layer == 2:
+		if layer in [0, 2]:
 			vert.u += uspd * f
 			vert.v += vspd * f
-		if layer == 1 or layer == 2:
+		if layer in [1, 2]:
 			vert.u2 += uspd * f
 			vert.v2 += vspd * f
 
@@ -3346,21 +3206,17 @@ def FindMaterial(material, obj = None):
 	material = material (string) to look for
 	"""
 
-	if obj == None:
+	if obj is None:
 		obj = logic.getCurrentController().owner
-	
+
 	mesh = obj.meshes[0]
-	
-	for m in range(len(mesh.materials)):	# Loop through materials in the mesh
-	
+
+	for m in range(len(mesh.materials)):
 		mname = str(mesh.materials[m])
-		
-		if mname[2:] == material:		# If the material minus the first 'MA' is found, then
+
+		if mname[2:] == material:# If the material minus the first 'MA' is found, then
 			return m					# Return the index of that material
-			break	
-			
-	else:
-		return 0						# Default to material index 0
+	return 0						# Default to material index 0
 
 def VertCol(color, obj = None, material = None):
 
@@ -3371,16 +3227,12 @@ def VertCol(color, obj = None, material = None):
 	material = name (string) of what material in particular to change the material's color to
 	"""
 
-	if obj == None:
+	if obj is None:
 		obj = logic.getCurrentController().owner
-	
+
 	mesh = obj.meshes[0]
 
-	if material != None:
-		mat = FindMaterial(obj, material)
-	else:
-		mat = 0
-
+	mat = FindMaterial(obj, material) if material != None else 0
 	for v in range(mesh.getVertexArrayLength(mat)):
 
 		vert = mesh.getVertex(0, v)
@@ -3406,74 +3258,64 @@ def Near(objpos = None, prop = '', mindist = 0, maxdist = 9999999, sort = 0, che
 	"""
 		
 	sce = logic.getCurrentScene()
-	
-	if objpos == None:
+
+	if objpos is None:
 		objpos = logic.getCurrentController().owner
-	
+
 	if isinstance(objpos, mathutils.Vector):								# Supplied object position is a position Vector
 		pos = objpos														# Position to check from - an object's position
 		removeobj = None
-	elif isinstance(objpos, list) or isinstance(objpos, tuple):				# Supplied object position is a tuple or list
+	elif isinstance(objpos, (list, tuple)):				# Supplied object position is a tuple or list
 		pos = mathutils.Vector(objpos)										# Position to check from
 		removeobj = None
 	else:																	# Supplied object position is an object
 		pos = objpos.worldPosition
 		removeobj = objpos
-		
-	if checklist == None:							# Use the scene's objects
-		objlist = sce.objects
-	else:											# Use the list provided
-		objlist = checklist
-		
+
+	objlist = sce.objects if checklist is None else checklist
 	returnlist = []
-		
+
 	for object in objlist:
-	
-		if isinstance(object, str):				# It's possible that checklist passed is a set of strings and not object pointers
-			obj = sce.objects[object]			# If it's a list of strings, then reference the scene's object list for the objects
-		else:
-			obj = object
-		
-		if not removeobj == obj and not obj.invalid:				# Don't take into account the object you're testing from to be in the list
-		
+
+		obj = sce.objects[object] if isinstance(object, str) else object
+		if removeobj != obj and not obj.invalid:		# Don't take into account the object you're testing from to be in the list
+
 			dist = obj.getDistanceTo(pos)
-				
-			if prop != '':					# If the property field is blank, then just get any and all scene objects within range
-			
-				if prop in obj and dist <= maxdist and dist >= mindist:
-				
-					if onlyobj:
-					
-						returnlist.append(obj)
-					
-					else:
-					
-						returnlist.append([obj, dist])
-			else:
-			
+
+			if prop == '':
+
 				if dist <= maxdist and dist >= mindist:
-				
+
 					if onlyobj:
-				
+
 						returnlist.append(obj)
-					
+
 					else:
-					
+
 						returnlist.append([obj, dist])
-	
+
+			elif prop in obj and dist <= maxdist and dist >= mindist:
+
+				if onlyobj:
+
+					returnlist.append(obj)
+
+				else:
+
+					returnlist.append([obj, dist])
 	if sort:
-	
+
 		if onlyobj:
-		
+
 			returnlist.sort(key = lambda sortkey : str(sortkey.name)) # If there's only objects in the list (no distance values), it sorts the list by object name
-		
+
 		else:
-	
+
 			returnlist.sort(key = lambda sortkey : sortkey[1])	# If sort is set to 1 (and onlyobj is not set to 1), it sorts the list, using as a key the distance values to the object
-	
+
 	if len(returnlist) <= 0:
 		returnlist = [None]
-	
+
 	return returnlist
 
 def RayCastList(topos, frompos, prop = None, face = 0, xray = 1):
@@ -3487,34 +3329,31 @@ def RayCastList(topos, frompos, prop = None, face = 0, xray = 1):
 	"""	
 	
 	from bge import logic
-	
+
 	obj = logic.getCurrentController().owner
 
 	l = []							# List of hit vectors
 	o = []							# List of hit objects (an object can only be counted once)
-	
+
 	pos = frompos
 
-	for x in range(100):			# Maximum would be 100 hits
-		
-		if prop == None:			# None is not an acceptable type; defaults to a blank string
+	for _ in range(100):
+		if prop is None:			# None is not an acceptable type; defaults to a blank string
 			prop = ""
-			
+
 		r = obj.rayCast(topos, pos, 0, prop, face, xray)
-			
+
 		if r[0] != None:
-			if not r[0] in o:
+			if r[0] not in o:
 				l.append(r)			# Add the raycast listing
 				o.append(r[0])		# Add the object to the hit object list (you can't hit the same object twice)
-			
+
 			pos = r[1]
-			
+
 		else:
 			print (o)
 			#print ("---")
 			return l
-			break
-	
 	print (o)
 	#print ("---")
 	return l
@@ -3533,67 +3372,67 @@ def RayCastCorners(angle, pos = None, dist = 100000.0, size = 1, prop = '', face
 	"""
 
 	obj = logic.getCurrentController().owner
-	
-	if pos == None:
+
+	if pos is None:
 		pos = obj.worldPosition
 
 	pos = pos.copy()
-	
-	if prop == None:
+
+	if prop is None:
 		prop = ""
-	
+
 	topos = pos.copy()
 	topos.x += math.cos(angle) * dist
 	topos.z += math.sin(angle) * dist
-	
+
 	r = obj.rayCast(topos, pos, 0, prop, face, xray)
 
-	if r[0] == None:
+	if r[0] is None:
 		pos.x += size / 2.0
 		if axis == 0:
 			pos.y += size / 2.0
 		else:
 			pos.z += size / 2.0
-			
+
 		topos = pos.copy()
 		topos.x += math.cos(angle) * dist
 		topos.z += math.sin(angle) * dist
-	
+
 		r = obj.rayCast(topos, pos, 0, prop, face, xray)
-	
-	if r[0] == None:
+
+	if r[0] is None:
 		pos.x -= size
-		
+
 		topos = pos.copy()
 		topos.x += math.cos(angle) * dist
 		topos.z += math.sin(angle) * dist
-	
+
 		r = obj.rayCast(topos, pos, 0, prop, face, xray)
-	
-	if r[0] == None:
-	
+
+	if r[0] is None:
+
 		if axis == 0:
 			pos.y -= size
 		else:
 			pos.z -= size
-			
+
 		topos = pos.copy()
 		topos.x += math.cos(angle) * dist
 		topos.z += math.sin(angle) * dist
-	
+
 		r = obj.rayCast(topos, pos, 0, prop, face, xray)
-	
-	if r[0] == None:
+
+	if r[0] is None:
 		pos.x += size
-		
+
 		topos = pos.copy()
 		topos.x += math.cos(angle) * dist
 		topos.z += math.sin(angle) * dist
-	
+
 		r = obj.rayCast(topos, pos, 0, prop, face, xray)
-	
+
 	#print (r)
-	
+
 	return (r)	
 
 def RayCastWidthXY(angle, pos = None, dist = 100000.0, width = 0.5, prop = '', face = 0, xray = 1):
@@ -3611,49 +3450,49 @@ def RayCastWidthXY(angle, pos = None, dist = 100000.0, width = 0.5, prop = '', f
 	
 	cont = logic.getCurrentController()
 	obj = cont.owner
-	
-	if pos == None:
+
+	if pos is None:
 		pos = obj.worldPosition
-	
+
 	p = pos.copy()
-	
+
 	topos = p.copy()
 	topos.x += math.cos(angle)
 	topos.y += math.sin(angle)
-	
+
 	ray = 'middle'	# Which raycast worked
-	
-	if prop == None:
+
+	if prop is None:
 		prop = ""
-	
+
 	r = obj.rayCast(topos, p, dist, prop, face, xray)
-	
-	if r[0] == None:	# raycast the right side
+
+	if r[0] is None:	# raycast the right side
 
 		ray = 'right'
-		
+
 		rangle = angle + (math.pi / 2.0)
 		p.x += math.cos(rangle) * width
 		p.y += math.sin(rangle) * width
 		topos.x += math.cos(rangle) * width
 		topos.y += math.sin(rangle) * width
 		r = obj.rayCast(topos, p, dist, prop, face, xray)
-		
-	if r[0] == None:	# Since both the middle raycast and the right raycast failed, try left
+
+	if r[0] is None:	# Since both the middle raycast and the right raycast failed, try left
 
 		ray = 'left'
-	
+
 		langle = angle - (math.pi / 2.0)
-		
+
 		p.x += (math.cos(langle) * width) * 2.0
 		p.y += (math.sin(langle) * width) * 2.0
 		topos.x += (math.cos(langle) * width) * 2.0
 		topos.y += (math.sin(langle) * width) * 2.0
-		
+
 		r = obj.rayCast(topos, p, dist, prop, face, xray)
-		
+
 	#print ([r, ray])
-	
+
 	return (r, ray)
 
 def RayCastWidthXZ(angle, pos = None, dist = 100000.0, width = 0.5, prop = '', face = 0, xray = 1):

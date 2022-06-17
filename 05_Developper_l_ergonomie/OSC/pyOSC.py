@@ -158,6 +158,7 @@ Original Comments
 > 	- dwh
 """
 
+
 import math, re, socket, select, string, struct, sys, threading, time, types, array, errno, inspect
 from socketserver import UDPServer, DatagramRequestHandler, ForkingMixIn, ThreadingMixIn, StreamRequestHandler, TCPServer
 from contextlib import closing
@@ -191,17 +192,16 @@ try:
 			FloatTypes.append(typeDict[ftype])
 		except KeyError:
 			pass
-		
+
 	for itype in ['int8', 'int16', 'int32', 'int64']:
 		try:
-			IntTypes.append(typeDict[itype])
-			IntTypes.append(typeDict['u' + itype])
+			IntTypes.extend((typeDict[itype], typeDict[f'u{itype}']))
 		except KeyError:
 			pass
-		
+
 	# thanks for those...
 	del typeDict, ftype, itype
-	
+
 except ImportError:
 	pass
 
@@ -275,13 +275,13 @@ class OSCMessage(object):
 			argument = list(argument.items())
 		elif isinstance(argument, OSCMessage):
 			raise TypeError("Can only append 'OSCMessage' to 'OSCBundle'")
-		
-		if hasattr(argument, '__iter__') and not type(argument) in (str,bytes):
+
+		if hasattr(argument, '__iter__') and type(argument) not in (str, bytes):
 			for arg in argument:
 				self.append(arg, typehint)
-			
+
 			return
-		
+
 		if typehint == 'b':
 			binary = OSCBlob(argument)
 			tag = 'b'
@@ -311,7 +311,7 @@ class OSCMessage(object):
 	def __str__(self):
 		"""Returns the Message's address and contents as a string.
 		"""
-		return "%s %s" % (self.address, str(list(self.values())))
+		return f"{self.address} {list(self.values())}"
 	
 	def __len__(self):
 		"""Returns the number of arguments appended so far
@@ -321,10 +321,9 @@ class OSCMessage(object):
 	def __eq__(self, other):
 		"""Return True if two OSCMessages have the same address & content
 		"""
-		if not isinstance(other, self.__class__):
-			return False
-		
-		return (self.address == other.address) and (self.typetags == other.typetags) and (self.message == other.message)
+		return ((self.address == other.address) and
+		        (self.typetags == other.typetags) and (self.message == other.message)
+		        if isinstance(other, self.__class__) else False)
 	
 	def __ne__(self, other):
 		"""Return (not self.__eq__(other))
@@ -380,13 +379,9 @@ class OSCMessage(object):
 		"""Returns a list of (typetag, value) tuples for 
 		the arguments appended so far
 		"""
-		out = []
 		values = list(self.values())
 		typetags = self.tags()
-		for i in range(len(values)):
-			out.append((typetags[i], values[i]))
-			
-		return out
+		return [(typetags[i], values[i]) for i in range(len(values))]
 
 	def __contains__(self, val):
 		"""Test if the given value appears in the OSCMessage's arguments
@@ -429,18 +424,18 @@ class OSCMessage(object):
 		Or, if 'i' is a slice, a list of these or another OSCMessage.
 		"""
 		items = list(self.items())
-		
+
 		new_items = self._buildItemList(val)
-		
+
 		if not isinstance(i,slice):
 			if len(new_items) != 1:
 				raise TypeError("single-item assignment expects a single value or a (typetag, value) tuple")
-			
+
 			new_items = new_items[0]
-			
+
 		# finally...
 		items[i] = new_items
-		
+
 		self._reencode(items)
 	
 	def setItem(self, i, val, typehint=None):
@@ -521,7 +516,7 @@ class OSCMessage(object):
 		Raises ValueError if val isn't found.
 		"""
 		items = list(self.items())
-		
+
 		# this is not very efficient...
 		i = 0
 		for (t, v) in items:
@@ -532,9 +527,9 @@ class OSCMessage(object):
 			raise ValueError("'%s' not in OSCMessage" % str(m))
 		# but more efficient than first calling self.values().index(val),
 		# then calling self.items(), which would in turn call self.values() again...
-		
+
 		del items[i]
-		
+
 		self._reencode(items)
 		
 	def __iter__(self):
@@ -591,16 +586,16 @@ class OSCBundle(OSCMessage):
 		"""Returns the Bundle's contents (and timetag, if nonzero) as a string.
 		"""
 		if (self.timetag > 0.):
-			out = "#bundle (%s) [" % self.getTimeTagStr()
+			out = f"#bundle ({self.getTimeTagStr()}) ["
 		else:
 			out = "#bundle ["
 
 		if self.__len__():
 			for val in list(self.values()):
-				out += "%s, " % str(val)
+				out += f"{str(val)}, "
 			out = out[:-2]		# strip trailing space and comma
-			
-		return out + "]"
+
+		return f"{out}]"
 	
 	def setTimeTag(self, time):
 		"""Set or change the OSCBundle's TimeTag
@@ -671,19 +666,17 @@ class OSCBundle(OSCMessage):
 	def values(self):
 		"""Returns a list of the OSCMessages appended so far
 		"""
-		out = []
-		for decoded in decodeOSC(self.getBinary())[2:]:
-			out.append(self._reencapsulate(decoded))
-			
-		return out
+		return [
+		    self._reencapsulate(decoded)
+		    for decoded in decodeOSC(self.getBinary())[2:]
+		]
 		
 	def __eq__(self, other):
 		"""Return True if two OSCBundles have the same timetag & content
 		"""
-		if not isinstance(other, self.__class__):
-			return False
-		
-		return (self.timetag == other.timetag) and (self.typetags == other.typetags) and (self.message == other.message)
+		return ((self.timetag == other.timetag) and
+		        (self.typetags == other.typetags) and (self.message == other.message)
+		        if isinstance(other, self.__class__) else False)
 	
 	def copy(self):
 		"""Returns a deep copy of this OSCBundle
@@ -718,11 +711,9 @@ def OSCBlob(next):
 		next = next.encode('latin1')
 	if isinstance(next,bytes):
 		OSCblobLength = math.ceil((len(next)) / 4.0) * 4
-		binary = struct.pack(">i%ds" % (OSCblobLength), OSCblobLength, next)
+		return struct.pack(">i%ds" % (OSCblobLength), OSCblobLength, next)
 	else:
-		binary = b''
-
-	return binary
+		return b''
 
 def OSCArgument(next, typehint=None):
 	""" Convert some Python types to their
@@ -772,14 +763,12 @@ def OSCTimeTag(time):
 	"""Convert a time in floating seconds to its
 	OSC binary representation
 	"""
-	if time > 0:
-		fract, secs = math.modf(time)
-		secs = secs - NTP_epoch
-		binary = struct.pack('>LL', int(secs), int(fract * NTP_units_per_second))
-	else:
-		binary = struct.pack('>LL', 0, 1)
+	if time <= 0:
+		return struct.pack('>LL', 0, 1)
 
-	return binary
+	fract, secs = math.modf(time)
+	secs = secs - NTP_epoch
+	return struct.pack('>LL', int(secs), int(fract * NTP_units_per_second))
 
 ######
 #
@@ -792,13 +781,13 @@ def _readString(data):
 	"""
 	length   = data.find(b'\0')
 	nextData = int(math.ceil((length+1) / 4.0) * 4)
-	return (data[0:length].decode('latin1'), data[nextData:])
+	return data[:length].decode('latin1'), data[nextData:]
 
 def _readBlob(data):
 	"""Reads the next (numbered) block of data
 	"""
 	
-	length   = struct.unpack(">i", data[0:4])[0]
+	length = struct.unpack(">i", data[:4])[0]
 	nextData = int(math.ceil((length) / 4.0) * 4) + 4
 	return (data[4:length+4], data[nextData:])
 
@@ -806,12 +795,12 @@ def _readInt(data):
 	"""Tries to interpret the next 4 bytes of the data
 	as a 32-bit integer. """
 	
-	if(len(data)<4):
+	if (len(data)<4):
 		print("Error: too few bytes for int", data, len(data))
 		rest = data
 		integer = 0
 	else:
-		integer = struct.unpack(">i", data[0:4])[0]
+		integer = struct.unpack(">i", data[:4])[0]
 		rest	= data[4:]
 
 	return (integer, rest)
@@ -821,7 +810,7 @@ def _readLong(data):
 	as a 64-bit signed integer.
 	 """
 
-	high, low = struct.unpack(">ll", data[0:8])
+	high, low = struct.unpack(">ll", data[:8])
 	big = (int(high) << 32) + low
 	rest = data[8:]
 	return (big, rest)
@@ -830,7 +819,7 @@ def _readTimeTag(data):
 	"""Tries to interpret the next 8 bytes of the data
 	as a TimeTag.
 	 """
-	high, low = struct.unpack(">LL", data[0:8])
+	high, low = struct.unpack(">LL", data[:8])
 	if (high == 0) and (low <= 1):
 		time = 0.0
 	else:
@@ -843,12 +832,12 @@ def _readFloat(data):
 	as a 32-bit float. 
 	"""
 	
-	if(len(data)<4):
+	if (len(data)<4):
 		print("Error: too few bytes for float", data, len(data))
 		rest = data
 		float = 0
 	else:
-		float = struct.unpack(">f", data[0:4])[0]
+		float = struct.unpack(">f", data[:4])[0]
 		rest  = data[4:]
 
 	return (float, rest)
@@ -858,12 +847,12 @@ def _readDouble(data):
 	as a 64-bit float. 
 	"""
 	
-	if(len(data)<8):
+	if (len(data)<8):
 		print("Error: too few bytes for double", data, len(data))
 		rest = data
 		float = 0
 	else:
-		float = struct.unpack(">d", data[0:8])[0]
+		float = struct.unpack(">d", data[:8])[0]
 		rest  = data[8:]
 
 	return (float, rest)
@@ -890,8 +879,7 @@ def decodeOSC(data):
 
 	if address == "#bundle":
 		time, rest = _readTimeTag(rest)
-		decoded.append(address)
-		decoded.append(time)
+		decoded.extend((address, time))
 		while len(rest)>0:
 			length, rest = _readInt(rest)
 			decoded.append(decodeOSC(rest[:length]))
@@ -900,8 +888,7 @@ def decodeOSC(data):
 	elif len(rest)>0:
 		if not len(typetags):
 			typetags, rest = _readString(rest)
-		decoded.append(address)
-		decoded.append(typetags)
+		decoded.extend((address, typetags))
 		if typetags.startswith(","):
 			for tag in typetags[1:]:
 				value, rest = table[tag](rest)
@@ -930,12 +917,11 @@ def hexDump(bytes):
 			line = "%02X0 : " % (i/16)
 		line += "%02X " % bytes[i]
 		if (i+1) % 16 == 0:
-			print("%s: %s" % (line, repr(bytes[i-15:i+1])))
+			print(f"{line}: {repr(bytes[i-15:i+1])}")
 			line = ""
 
-	bytes_left = num % 16
-	if bytes_left:
-		print("%s: %s" % (line.ljust(54), repr(bytes[-bytes_left:])))
+	if bytes_left := num % 16:
+		print(f"{line.ljust(54)}: {repr(bytes[-bytes_left:])}")
 
 def getUrlStr(*args):
 	"""Convert provided arguments to a string in 'host:port/prefix' format
@@ -947,7 +933,7 @@ def getUrlStr(*args):
 	"""
 	if not len(args):
 		return ""
-		
+
 	if type(args[0]) == tuple:
 		host = args[0][0]
 		port = args[0][1]
@@ -956,12 +942,8 @@ def getUrlStr(*args):
 		host = args[0]
 		port = args[1]
 		args = args[2:]
-		
-	if len(args):
-		prefix = args[0]
-	else:
-		prefix = ""
-	
+
+	prefix = args[0] if len(args) else ""
 	if len(host) and (host != '0.0.0.0'):
 		try:
 			(host, _, _) = socket.gethostbyaddr(host)
@@ -969,7 +951,7 @@ def getUrlStr(*args):
 			pass
 	else:
 		host = 'localhost'
-	
+
 	if isinstance(port,int):
 		return "%s:%d%s" % (host, port, prefix)
 	else:
@@ -985,7 +967,7 @@ def parseUrlStr(url):
 	i = url.find("://")
 	if i > -1:
 		url = url[i+3:]
-		
+
 	i = url.find(':')
 	if i > -1:
 		host = url[:i].strip()
@@ -993,29 +975,29 @@ def parseUrlStr(url):
 	else:
 		host = ''
 		tail = url
-	
+
 	for i in range(len(tail)):
 		if not tail[i].isdigit():
 			break
 	else:
 		i += 1
-	
+
 	portstr = tail[:i].strip()
 	tail = tail[i:].strip()
-	
+
 	found = len(tail)
 	for c in ('/', '+', '-', '*'):
 		i = tail.find(c)
 		if (i > -1) and (i < found):
 			found = i
-	
+
 	head = tail[:found].strip()
 	prefix = tail[found:].strip()
-	
+
 	prefix = prefix.strip('/')
 	if len(prefix) and prefix[0] not in ('+', '-', '*'):
-		prefix = '/' + prefix
-	
+		prefix = f'/{prefix}'
+
 	if len(head) and not len(host):
 		host = head
 
@@ -1029,7 +1011,7 @@ def parseUrlStr(url):
 		port = int(portstr)
 	except ValueError:
 		port = None
-	
+
 	return ((host, port), prefix)
 
 ######
@@ -1055,8 +1037,8 @@ class OSCClient(object):
 		  If none is supplied, a socket will be created.
 		"""
 		self.socket = None
-		
-		if server == None:
+
+		if server is None:
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, self.sndbuf_size)
 			self._fd = self.socket.fileno()
@@ -1102,12 +1084,11 @@ class OSCClient(object):
 		"""
 		out = self.__class__.__name__
 		out += " v%s.%s-%s" % version
-		addr = self.address()
-		if addr:
-			out += " connected to osc://%s" % getUrlStr(addr)
+		if addr := self.address():
+			out += f" connected to osc://{getUrlStr(addr)}"
 		else:
 			out += " (unconnected)"
-	
+
 		return out
 	
 	def __eq__(self, other):
@@ -1147,8 +1128,8 @@ class OSCClient(object):
 			self.client_address = address
 		except socket.error as e:
 			self.client_address = None
-			raise OSCClientError("SocketError: %s" % str(e))
-		
+			raise OSCClientError(f"SocketError: {str(e)}")
+
 		if self.server != None:
 			self.server.return_port = address[1]
 
@@ -1169,19 +1150,19 @@ class OSCClient(object):
 		except:
 			# for the very rare case this might happen
 			raise OSCClientError("Timed out waiting for file descriptor")
-		
+
 		try:
 			self.socket.connect(address)
 			self.socket.sendall(msg.getBinary())
-			
+
 			if self.client_address:
 				self.socket.connect(self.client_address)
-			
+
 		except socket.error as e:
 			if e[0] in (7, 65):	# 7 = 'no address associated with nodename',  65 = 'no route to host'
 				raise e
 			else:
-				raise OSCClientError("while sending to %s: %s" % (str(address), str(e)))
+				raise OSCClientError(f"while sending to {str(address)}: {str(e)}")
 
 	def send(self, msg, timeout=None):
 		"""Send the given OSCMessage.
@@ -1201,14 +1182,14 @@ class OSCClient(object):
 		except:
 			# for the very rare case this might happen
 			raise OSCClientError("Timed out waiting for file descriptor")
-		
+
 		try:
 			self.socket.sendall(msg.getBinary())
 		except socket.error as e:
 			if e[0] in (7, 65):	# 7 = 'no address associated with nodename',  65 = 'no route to host'
 				raise e
 			else:
-				raise OSCClientError("while sending: %s" % str(e))
+				raise OSCClientError(f"while sending: {str(e)}")
 
 ######
 #
@@ -1222,10 +1203,10 @@ def parseFilterStr(args):
 	Returns a list: ['<prefix>', filters]
 	"""
 	out = {}
-	
+
 	if isinstance(args,str):
 		args = [args]
-		
+
 	prefix = None
 	for arg in args:
 		head = None
@@ -1234,15 +1215,15 @@ def parseFilterStr(args):
 			plusfs = minus.pop(0).strip()
 			if len(plusfs):
 				plusfs = '/' + plusfs.strip('/')
-			
-			if (head == None) and (plusfs != "/*"):
+
+			if head is None and plusfs != "/*":
 				head = plusfs
 			elif len(plusfs):
 				if plusfs == '/*':
 					out = { '/*':True }	# reset all previous filters
 				else:
 					out[plusfs] = True
-				
+
 			for minusfs in minus:
 				minusfs = minusfs.strip()
 				if len(minusfs):
@@ -1251,8 +1232,8 @@ def parseFilterStr(args):
 						out = { '/*':False }	# reset all previous filters
 					else:
 						out[minusfs] = False
-				
-		if prefix == None:
+
+		if prefix is None:
 			prefix = head
 
 	return [prefix, out]
@@ -1263,26 +1244,19 @@ def getFilterStr(filters):
 	"""
 	if not len(filters):
 		return []
-	
+
 	if '/*' in list(filters.keys()):
-		if filters['/*']:
-			out = ["+/*"]
-		else:
-			out = ["-/*"]
+		out = ["+/*"] if filters['/*'] else ["-/*"]
 	else:
-		if False in list(filters.values()):
-			out = ["+/*"]
-		else:
-			out = ["-/*"]
-	
+		out = ["+/*"] if False in list(filters.values()) else ["-/*"]
 	for (addr, bool) in list(filters.items()):
 		if addr == '/*':
 			continue
-		
+
 		if bool:
-			out.append("+%s" % addr)
+			out.append(f"+{addr}")
 		else:
-			out.append("-%s" % addr)
+			out.append(f"-{addr}")
 
 	return out
 
@@ -1415,7 +1389,7 @@ class OSCMultiClient(OSCClient):
 		If the 'prefix' argument is given, the Target is only deleted if the address and prefix match.
 		"""
 		try:
-			if prefix == None:
+			if prefix is None:
 				del self.targets[address]
 			elif prefix == self.targets[address][0]:
 				del self.targets[address]
@@ -1455,13 +1429,13 @@ class OSCMultiClient(OSCClient):
 			except socket.error:
 				pass
 			address = (host, port)
-			
+
 			if address in list(self.targets.keys()):
-				if prefix == None:
+				if prefix is None:
 					return True
 				elif prefix == self.targets[address][0]:
 					return True
-					
+
 		return False
 		
 	def getOSCTargets(self):
@@ -1531,19 +1505,16 @@ class OSCMultiClient(OSCClient):
 		Returns (None, []) if address not found.
 		"""
 		(addr, (prefix, filters)) = self.getOSCTarget(address)
-		if addr == None:
+		if addr is None:
 			return (None, [])
 
-		return ("osc://%s" % getUrlStr(addr, prefix), getFilterStr(filters))
+		return f"osc://{getUrlStr(addr, prefix)}", getFilterStr(filters)
 			
 	def getOSCTargetStrings(self):
 		"""Returns a list of all OSCTargets as ('osc://<host>:<port>[<prefix>]', ['<filter-string>', ...])' tuples.
 		"""
-		out = []
-		for (addr, (prefix, filters)) in list(self.targets.items()):
-			out.append(("osc://%s" % getUrlStr(addr, prefix), getFilterStr(filters)))
-			
-		return out
+		return [(f"osc://{getUrlStr(addr, prefix)}", getFilterStr(filters))
+		        for addr, (prefix, filters) in list(self.targets.items())]
 	
 	def connect(self, address):
 		"""The OSCMultiClient isn't allowed to connect to any specific
@@ -1576,17 +1547,12 @@ class OSCMultiClient(OSCClient):
 			msgs = list(out.values())
 			out.clearData()
 			for m in msgs:
-				m = self._filterMessage(filters, m)
-				if m:		# this catches 'None' and empty bundles.
+				if m := self._filterMessage(filters, m):
 					out.append(m)
-					
+
 		elif isinstance(msg, OSCMessage):
 			if '/*' in list(filters.keys()):
-				if filters['/*']:
-					out = msg
-				else:
-					out = None
-					
+				out = msg if filters['/*'] else None
 			elif False in list(filters.values()): 
 				out = msg
 			else:
@@ -1600,13 +1566,10 @@ class OSCMultiClient(OSCClient):
 		for addr in list(filters.keys()):
 			if addr == '/*':
 				continue
-			
+
 			match = expr.match(addr)
 			if match and (match.end() == len(addr)):
-				if filters[addr]:
-					out = msg
-				else:
-					out = None
+				out = msg if filters[addr] else None
 				break
 
 		return out
@@ -1651,24 +1614,24 @@ class OSCMultiClient(OSCClient):
 				out = self._prefixAddress(prefix, msg)
 
 			binary = out.getBinary()
-			
+
 			ret = select.select([],[self._fd], [], timeout)
 			try:
 				ret[1].index(self._fd)
 			except:
 				# for the very rare case this might happen
 				raise OSCClientError("Timed out waiting for file descriptor")
-			
+
 			try:
 				while len(binary):
 					sent = self.socket.sendto(binary, address)
 					binary = binary[sent:]
-				
+
 			except socket.error as e:
 				if e[0] in (7, 65):	# 7 = 'no address associated with nodename',  65 = 'no route to host'
 					raise e
 				else:
-					raise OSCClientError("while sending to %s: %s" % (str(address), str(e)))
+					raise OSCClientError(f"while sending to {str(address)}: {str(e)}")
 
 class OSCAddressSpace:
 	def __init__(self):
@@ -1715,9 +1678,9 @@ class OSCAddressSpace:
 		"""
 		if len(tags) != len(data):
 			raise OSCServerError("Malformed OSC-message; got %d typetags [%s] vs. %d values" % (len(tags), tags, len(data)))
-		
+
 		expr = getRegEx(pattern)
-		
+
 		replies = []
 		matched = 0
 		for addr in list(self.callbacks.keys()):
@@ -1728,18 +1691,21 @@ class OSCAddressSpace:
 				if isinstance(reply, OSCMessage):
 					replies.append(reply)
 				elif reply != None:
-					raise TypeError("Message-callback %s did not return OSCMessage or None: %s" % (self.server.callbacks[addr], type(reply)))
-					
+					raise TypeError(
+					    f"Message-callback {self.server.callbacks[addr]} did not return OSCMessage or None: {type(reply)}"
+					)
+
 		if matched == 0:
-			if 'default' in self.callbacks:
-				reply = self.callbacks['default'](pattern, tags, data, client_address)
-				if isinstance(reply, OSCMessage):
-					replies.append(reply)
-				elif reply != None:
-					raise TypeError("Message-callback %s did not return OSCMessage or None: %s" % (self.server.callbacks['default'], type(reply)))
-			else:
+			if 'default' not in self.callbacks:
 				raise NoCallbackError(pattern)
-		
+
+			reply = self.callbacks['default'](pattern, tags, data, client_address)
+			if isinstance(reply, OSCMessage):
+				replies.append(reply)
+			elif reply != None:
+				raise TypeError(
+				    f"Message-callback {self.server.callbacks['default']} did not return OSCMessage or None: {type(reply)}"
+				)
 		return replies
 
 ######
@@ -1864,17 +1830,17 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		"""
 		UDPServer.__init__(self, server_address, self.RequestHandlerClass)
 		OSCAddressSpace.__init__(self)
-		
+
 		self.setReturnPort(return_port)
 		self.error_prefix = ""
 		self.info_prefix = "/info"
-		
+
 		self.socket.settimeout(self.socket_timeout)
-		
+
 		self.running = False
 		self.client = None
-		
-		if client == None:
+
+		if client is None:
 			self.client = OSCClient(server=self)
 		else:
 			self.setClient(client)
@@ -1884,26 +1850,28 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		"""
 		if not isinstance(client, OSCClient):
 			raise ValueError("'client' argument is not a valid OSCClient object")
-		
+
 		if client.server != None:
-			raise OSCServerError("Provided OSCClient already has an OSCServer-instance: %s" % str(client.server))
-		
+			raise OSCServerError(
+			    f"Provided OSCClient already has an OSCServer-instance: {str(client.server)}"
+			)
+
 		# Server socket is already listening at this point, so we can't use the client's socket.
 		# we'll have to force our socket on the client...
 		client_address = client.address()	# client may be already connected
 		client.close()				# shut-down that socket
-		
+
 		# force our socket upon the client
 		client.socket = self.socket.dup()
 		client.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, client.sndbuf_size)
 		client._fd = client.socket.fileno()
 		client.server = self
-		
+
 		if client_address:
 			client.connect(client_address)
 			if not self.return_port:
 				self.return_port = client_address[1]
-		
+
 		if self.client != None:
 			self.client.close()
 
@@ -1927,21 +1895,18 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		"""
 		out = self.__class__.__name__
 		out += " v%s.%s-%s" % version
-		addr = self.address()
-		if addr:
-			out += " listening on osc://%s" % getUrlStr(addr)
+		if addr := self.address():
+			out += f" listening on osc://{getUrlStr(addr)}"
 		else:
 			out += " (unbound)"
-			
+
 		return out
 	
 	def __eq__(self, other):
 		"""Compare function.
 		"""
-		if not isinstance(other, self.__class__):
-			return False
-			
-		return cmp(self.socket._sock, other.socket._sock)
+		return (cmp(self.socket._sock, other.socket._sock) if isinstance(
+		    other, self.__class__) else False)
 
 	def __ne__(self, other):
 		"""Compare function.
@@ -1960,10 +1925,7 @@ class OSCServer(UDPServer, OSCAddressSpace):
 	def setReturnPort(self, port):
 		"""Set the destination UDP-port for replies returning from this server to the remote client
 		"""
-		if (port > 1024) and (port < 65536):
-			self.return_port = port
-		else:
-			self.return_port = None
+		self.return_port = port if (port > 1024) and (port < 65536) else None
 			
 
 	def setSrvInfoPrefix(self, pattern):
@@ -2010,11 +1972,11 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		self.addMsgHandler('default', self.noCallback_handler)
 		self.addMsgHandler(prefix + info_prefix, self.serverInfo_handler)
 		self.addMsgHandler(prefix + error_prefix, self.msgPrinter_handler)
-		self.addMsgHandler(prefix + '/print', self.msgPrinter_handler)
-		
+		self.addMsgHandler(f'{prefix}/print', self.msgPrinter_handler)
+
 		if isinstance(self.client, OSCMultiClient):
-			self.addMsgHandler(prefix + '/subscribe', self.subscription_handler)
-			self.addMsgHandler(prefix + '/unsubscribe', self.subscription_handler)
+			self.addMsgHandler(f'{prefix}/subscribe', self.subscription_handler)
+			self.addMsgHandler(f'{prefix}/unsubscribe', self.subscription_handler)
 		
 	def printErr(self, txt):
 		"""Writes 'OSCServer: txt' to sys.stderr
@@ -2083,14 +2045,16 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		sends the error-message as reply to the client
 		"""
 		(e_type, e) = sys.exc_info()[:2]
-		self.printErr("%s on request from %s: %s" % (e_type.__name__, getUrlStr(client_address), str(e)))
+		self.printErr(
+		    f"{e_type.__name__} on request from {getUrlStr(client_address)}: {str(e)}"
+		)
 
 		if self.print_tracebacks:
 			import traceback
 			traceback.print_exc() # XXX But this goes to stderr!
-		
+
 		if len(self.error_prefix):
-			self.sendOSCerror("%s: %s" % (e_type.__name__, str(e)), client_address)
+			self.sendOSCerror(f"{e_type.__name__}: {str(e)}", client_address)
 	
 	def noCallback_handler(self, addr, tags, data, client_address):
 		"""Example handler for OSCMessages.
@@ -2158,9 +2122,9 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		"""
 		if len(data) == 0:
 			return None
-		
+
 		cmd = data.pop(0)
-		
+
 		reply = None
 		if cmd in ('help', 'info'):
 			reply = OSCBundle(self.info_prefix)
@@ -2176,14 +2140,12 @@ class OSCServer(UDPServer, OSCAddressSpace):
 				reply = OSCBundle(self.info_prefix)
 				for trg in self.client.getOSCTargetStrings():
 					reply.append(('target',) + trg)
-			else:
-				cli_addr = self.client.address()
-				if cli_addr:
-					reply = OSCMessage(self.info_prefix)
-					reply.append(('target', "osc://%s/" % getUrlStr(cli_addr)))
+			elif cli_addr := self.client.address():
+				reply = OSCMessage(self.info_prefix)
+				reply.append(('target', f"osc://{getUrlStr(cli_addr)}/"))
 		else:
 			self.reportErr("unrecognized command '%s' in /info request from osc://%s. Try 'help'" % (cmd, getUrlStr(client_address)), client_address)
-			
+
 		return reply
 	
 	def _subscribe(self, data, client_address):
@@ -2205,19 +2167,19 @@ class OSCServer(UDPServer, OSCAddressSpace):
 
 		(addr, tail) = parseUrlStr(url)
 		(prefix, filters) = parseFilterStr(tail)
-		
-		if addr != None:
+
+		if addr is None:
+			addr = client_address
+
+		else:
 			(host, port) = addr
 			if not host:
 				host = client_address[0]
 			if not port:
 				port = client_address[1]
 			addr = (host, port)
-		else:
-			addr = client_address
-		
 		self.client._setTarget(addr, prefix, filters)
-	
+
 		trg = self.client.getOSCTargetStr(addr)
 		if trg[0] != None:
 			reply = OSCMessage(self.info_prefix)
@@ -2242,8 +2204,8 @@ class OSCServer(UDPServer, OSCAddressSpace):
 				url += item
 
 		(addr, _) = parseUrlStr(url)
-		
-		if addr == None:
+
+		if addr is None:
 			addr = client_address
 		else:
 			(host, port) = addr
@@ -2254,13 +2216,13 @@ class OSCServer(UDPServer, OSCAddressSpace):
 					(host, port) = self.client._searchHostAddr(host)
 				except NotSubscribedError:
 					port = client_address[1]
-					
+
 			addr = (host, port)
-		
+
 		try:
 			self.client._delTarget(addr)
 		except NotSubscribedError as e:
-			txt = "%s: %s" % (e.__class__.__name__, str(e))
+			txt = f"{e.__class__.__name__}: {str(e)}"
 			self.printErr(txt)
 
 			reply = OSCMessage(self.error_prefix)
@@ -2300,10 +2262,12 @@ class OSCServer(UDPServer, OSCAddressSpace):
 		match the subscription.
 		"""
 		if not isinstance(self.client, OSCMultiClient):
-			raise OSCServerError("Local %s does not support subsctiptions or message-filtering" % self.client.__class__.__name__)
-		
+			raise OSCServerError(
+			    f"Local {self.client.__class__.__name__} does not support subsctiptions or message-filtering"
+			)
+
 		addr_cmd = addr.split('/')[-1]
-		
+
 		if len(data):
 			if data[0] in ('help', 'info'):
 				reply = OSCBundle(self.info_prefix)
@@ -2324,10 +2288,10 @@ class OSCServer(UDPServer, OSCAddressSpace):
 
 			if data[0] in ('unsubscribe', 'silence', 'nosend', 'deltarget'):
 				return self._unsubscribe(data[1:], client_address)
-				
+
 		if addr_cmd in ('subscribe', 'listen', 'sendto', 'target'):
 			return self._subscribe(data, client_address)
-		
+
 		if addr_cmd in ('unsubscribe', 'silence', 'nosend', 'deltarget'):
 			return self._unsubscribe(data, client_address)
 
@@ -2384,12 +2348,8 @@ class NotSubscribedError(OSCClientError):
 	that isn't subscribed.
 	"""
 	def __init__(self, addr, prefix=None):
-		if prefix:
-			url = getUrlStr(addr, prefix)
-		else:
-			url = getUrlStr(addr, '')
-
-		self.message = "Target osc://%s is not subscribed" % url			
+		url = getUrlStr(addr, prefix) if prefix else getUrlStr(addr, '')
+		self.message = f"Target osc://{url} is not subscribed"			
 
 ######
 #
@@ -2514,20 +2474,20 @@ class OSCStreamRequestHandler(StreamRequestHandler, OSCAddressSpace):
 		"""
 		# get OSC packet size from stream which is prepended each transmission
 		chunk = self._receive(4)
-		if chunk == None:
+		if chunk is None:
 			print("SERVER: Socket has been closed.")
 			return None
 		# extract message length from big endian unsigned long (32 bit) 
 		slen = struct.unpack(">L", chunk)[0]
 		# receive the actual message
 		chunk = self._receive(slen)
-		if chunk == None:
+		if chunk is None:
 			print("SERVER: Socket has been closed.")
 			return None
 		# decode OSC data and dispatch
 		msg = decodeOSC(chunk)
-		if msg == None:
-			raise OSCError("SERVER: Message decoding failed.")		
+		if msg is None:
+			raise OSCError("SERVER: Message decoding failed.")
 		return msg
 
 	def handle(self):
@@ -2540,12 +2500,12 @@ class OSCStreamRequestHandler(StreamRequestHandler, OSCAddressSpace):
 		# in order to provide a way to shut the server down. But we want
 		# clean and blocking behaviour here
 		self.connection.settimeout(None)
-		
+
 		print("SERVER: Entered server loop")
 		try:
 			while True:
 				decoded = self._receiveMsg()
-				if decoded == None:
+				if decoded is None:
 					return
 				elif len(decoded) <= 0:
 					# if message decoding fails we try to stay in sync but print a message
@@ -2569,7 +2529,7 @@ class OSCStreamRequestHandler(StreamRequestHandler, OSCAddressSpace):
 				self._txMutex.release()
 				if not txOk:
 					break
-		
+
 		except socket.error as e:
 			if e[0] == errno.ECONNRESET:
 				# if connection has been reset by client, we do not care much
@@ -2713,21 +2673,19 @@ class OSCStreamingClient(OSCAddressSpace):
 			try:
 				tmp = self.socket.recv(count - len(chunk))
 			except socket.timeout:
-				if not self._running:
-					print("CLIENT: Socket timed out and termination requested.")
-					return None
-				else:
+				if self._running:
 					continue
+				print("CLIENT: Socket timed out and termination requested.")
+				return None
 			except socket.error as e:
-				if e[0] == errno.ECONNRESET:
-					print("CLIENT: Connection reset by peer.")
-					return None
-				else:
+				if e[0] != errno.ECONNRESET:
 					raise e
+				print("CLIENT: Connection reset by peer.")
+				return None
 			if not tmp or len(tmp) == 0:
 				print("CLIENT: Socket has been closed.")
 				return None
-			chunk = chunk + tmp
+			chunk += tmp
 		return chunk
 	def _receiveMsgWithTimeout(self):
 		""" Receive OSC message from a socket and decode.
@@ -2745,7 +2703,7 @@ class OSCStreamingClient(OSCAddressSpace):
 			return None
 		# decode OSC content
 		msg = decodeOSC(chunk)
-		if msg == None:
+		if msg is None:
 			raise OSCError("CLIENT: Message decoding failed.")
 		return msg
 
@@ -2806,17 +2764,15 @@ class OSCStreamingClient(OSCAddressSpace):
 			try:
 				tmp = self.socket.send(data[sent:])
 			except socket.timeout:
-				if not self._running:
-					print("CLIENT: Socket timed out and termination requested.")
-					return False
-				else:
+				if self._running:
 					continue
+				print("CLIENT: Socket timed out and termination requested.")
+				return False
 			except socket.error as e:
-				if e[0] == errno.ECONNRESET:
-					print("CLIENT: Connection reset by peer.")
-					return False
-				else:
+				if e[0] != errno.ECONNRESET:
 					raise e
+				print("CLIENT: Connection reset by peer.")
+				return False
 			if tmp == 0:
 				return False
 			sent += tmp
@@ -2831,10 +2787,9 @@ class OSCStreamingClient(OSCAddressSpace):
 		len_big_endian = array.array('c', '\0' * 4)
 		struct.pack_into(">L", len_big_endian, 0, length)
 		len_big_endian = len_big_endian.tostring()
-		if self._transmitWithTimeout(len_big_endian) and self._transmitWithTimeout(binary):
-			return True
-		else:
-			return False
+		return bool(
+		    self._transmitWithTimeout(len_big_endian)
+		    and self._transmitWithTimeout(binary))
 
 	def sendOSC(self, msg):
 		"""Send an OSC message or bundle to the server. Returns True on success.
@@ -2850,12 +2805,11 @@ class OSCStreamingClient(OSCAddressSpace):
 		"""
 		out = self.__class__.__name__
 		out += " v%s.%s-%s" % version
-		addr = self.socket.getpeername()
-		if addr:
-			out += " connected to osc://%s" % getUrlStr(addr)
+		if addr := self.socket.getpeername():
+			out += f" connected to osc://{getUrlStr(addr)}"
 		else:
 			out += " (unconnected)"
-	
+
 		return out
 
 	def __eq__(self, other):
